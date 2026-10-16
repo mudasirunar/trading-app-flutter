@@ -114,19 +114,19 @@ class SimulatedExchangeDataSource implements IMarketDataSource {
   InstrumentModel _computeNextTick(InstrumentModel current, DateTime now) {
     final volatility = _getSectorVolatility(current.sector);
 
-    // Delta t in years for a 1.5-second tick interval (assuming 252 trading days, 6.5h session)
-    const double dt = 1.5 / (252.0 * 6.5 * 3600.0);
-
-    // Mild mean-reverting drift toward openPrice to prevent runaway divergence
-    final double drift = 0.05 * ((current.openPrice - current.currentPrice) / current.openPrice);
-
     // Box-Muller Gaussian standard normal variate Z ~ N(0, 1)
     final double z = _boxMullerGaussian();
 
-    // Geometric Brownian Motion step: S_t = S_{t-1} * exp((mu - 0.5 * sigma^2) * dt + sigma * sqrt(dt) * Z)
-    final double exponent = (drift - 0.5 * volatility * volatility) * dt +
-        volatility * math.sqrt(dt) * z;
-    double newPrice = current.currentPrice * math.exp(exponent);
+    // Realistic active trading session micro-tick simulation:
+    // Prices fluctuate smoothly up and down with two-sided Brownian noise.
+    final double randomNoise = (_random.nextDouble() - 0.495) * 0.0016;
+    final double microShock = (z * volatility * 0.0022) + randomNoise;
+
+    // Gentle mean-reverting drift toward openPrice to prevent runaway divergence
+    final double meanReversion =
+        0.015 * ((current.openPrice - current.currentPrice) / current.openPrice);
+
+    double newPrice = current.currentPrice * (1.0 + microShock + meanReversion);
 
     // Financial terminal rounding to 2 decimal places
     newPrice = double.parse(newPrice.toStringAsFixed(2));
@@ -562,25 +562,43 @@ class SimulatedExchangeDataSource implements IMarketDataSource {
       ),
     ];
 
+    // Realistic market day distribution (healthy mix of gainers and losers)
+    final dayReturnPcts = <String, double>{
+      'AAPL': -1.24,
+      'MSFT': 1.15,
+      'NVDA': 2.85,
+      'GOOGL': -0.72,
+      'AMZN': 1.48,
+      'META': 1.92,
+      'TSLA': -2.35,
+      'BRK.B': 0.35,
+      'JPM': -1.10,
+      'V': 0.62,
+      'LLY': 2.10,
+      'JNJ': -0.85,
+      'XOM': -1.45,
+      'WMT': -0.42,
+      'MCD': 0.78,
+    };
+
     for (final def in seedDefinitions) {
       // Calculate realistic baseline metrics
-      final previousClose = def.basePrice * (1.0 - (_random.nextDouble() * 0.02 - 0.01));
+      final baselinePct = dayReturnPcts[def.symbol] ?? ((_random.nextDouble() * 4.0) - 2.0);
+      final previousClose = def.basePrice / (1.0 + (baselinePct / 100.0));
       final roundedPreviousClose = double.parse(previousClose.toStringAsFixed(2));
       final change = double.parse((def.basePrice - roundedPreviousClose).toStringAsFixed(2));
-      final changePercent = roundedPreviousClose > 0
-          ? double.parse(((change / roundedPreviousClose) * 100).toStringAsFixed(2))
-          : 0.0;
+      final changePercent = double.parse(baselinePct.toStringAsFixed(2));
 
       final spread = double.parse(math.max(0.01, def.basePrice * 0.0003).toStringAsFixed(2));
       final bid = double.parse((def.basePrice - spread / 2).toStringAsFixed(2));
       final ask = double.parse((def.basePrice + spread / 2).toStringAsFixed(2));
 
-      // Generate seed sparkline of 20 points
+      // Generate seed sparkline of 20 points following the trend
       final sparkline = <double>[];
       double p = roundedPreviousClose;
+      final step = (def.basePrice - roundedPreviousClose) / 19.0;
       for (int s = 0; s < 20; s++) {
-        p += (def.basePrice - roundedPreviousClose) * (s / 20.0) +
-            (_random.nextDouble() * 0.4 - 0.2);
+        p += step + ((_random.nextDouble() - 0.5) * (def.basePrice * 0.0025));
         sparkline.add(double.parse(p.toStringAsFixed(2)));
       }
 

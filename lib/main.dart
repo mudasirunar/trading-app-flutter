@@ -12,7 +12,7 @@ import 'repositories/auth/i_auth_repository.dart';
 import 'repositories/market/i_market_repository.dart';
 import 'repositories/market/market_repository.dart';
 import 'views/auth/login_screen.dart';
-import 'views/showcase/design_showcase_screen.dart';
+import 'views/navigation/main_navigation_hub.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -68,7 +68,7 @@ class TradingApp extends StatelessWidget {
             home: BlocBuilder<AuthBloc, AuthState>(
               builder: (context, authState) {
                 if (authState is Authenticated) {
-                  return const DesignShowcaseScreen();
+                  return const MainNavigationHub();
                 }
                 // Show full-screen loader on cold-start session verification to prevent login flash
                 if (authState is AuthInitial || authState is AuthCheckingSession) {
