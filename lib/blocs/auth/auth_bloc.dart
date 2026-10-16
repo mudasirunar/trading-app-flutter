@@ -21,7 +21,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     AuthCheckRequested event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthLoading());
+    emit(const AuthCheckingSession());
     try {
       final user = await _authRepository.getCurrentUser();
       if (user != null) {

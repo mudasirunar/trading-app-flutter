@@ -14,7 +14,7 @@ class AuthRepository implements IAuthRepository {
       user: UserModel(
         id: 'usr_pro_001',
         email: 'mudasir@gmail.com',
-        displayName: 'Mudasir Unar',
+        displayName: 'Mudasir Ali',
         token: 'tok_live_pro_mudasir_8892krwysc',
         accountType: 'pro',
         createdAt: DateTime(2026, 1, 15),

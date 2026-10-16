@@ -167,6 +167,7 @@ class _DesignShowcaseScreenState extends State<DesignShowcaseScreen> {
                 primaryButtonText: 'Sign Out',
                 secondaryButtonText: 'Cancel',
                 onPrimaryPressed: () {
+                  context.read<MarketBloc>().add(const MarketFeedPaused());
                   context.read<AuthBloc>().add(const AuthLogoutRequested());
                 },
               );

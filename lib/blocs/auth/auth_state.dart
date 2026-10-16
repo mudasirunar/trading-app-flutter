@@ -13,6 +13,11 @@ class AuthInitial extends AuthState {
   const AuthInitial();
 }
 
+/// Cold-start state verifying whether a persistent user session exists.
+class AuthCheckingSession extends AuthState {
+  const AuthCheckingSession();
+}
+
 /// In-flight authentication request.
 class AuthLoading extends AuthState {
   const AuthLoading();

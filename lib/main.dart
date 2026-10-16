@@ -69,15 +69,17 @@ class TradingApp extends StatelessWidget {
               builder: (context, authState) {
                 if (authState is Authenticated) {
                   return const DesignShowcaseScreen();
-                } else if (authState is Unauthenticated || authState is AuthFailure) {
-                  return const LoginScreen();
                 }
-                // Initial session verification (prevents login screen flash for logged-in users)
-                return const Scaffold(
-                  body: Center(
-                    child: CircularProgressIndicator.adaptive(),
-                  ),
-                );
+                // Show full-screen loader on cold-start session verification to prevent login flash
+                if (authState is AuthInitial || authState is AuthCheckingSession) {
+                  return const Scaffold(
+                    body: Center(
+                      child: CircularProgressIndicator.adaptive(),
+                    ),
+                  );
+                }
+                // Keep LoginScreen mounted during AuthLoading, Unauthenticated, and AuthFailure
+                return const LoginScreen();
               },
             ),
           );

@@ -18,12 +18,31 @@ void main() {
 
   group('AuthBloc Unit Tests', () {
     blocTest<AuthBloc, AuthState>(
-      'emits [AuthLoading, Unauthenticated] when no cached user session exists',
+      'emits [AuthCheckingSession, Unauthenticated] when no cached user session exists',
       build: () => AuthBloc(authRepository: authRepository),
       act: (bloc) => bloc.add(const AuthCheckRequested()),
       expect: () => [
-        const AuthLoading(),
+        const AuthCheckingSession(),
         const Unauthenticated(),
+      ],
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthCheckingSession, Authenticated] when a previously saved session exists in SharedPreferences',
+      setUp: () async {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+          'auth_session_user',
+          '{"id":"usr_pro_001","email":"mudasir@gmail.com","displayName":"Mudasir Ali","token":"tok_123","accountType":"pro","createdAt":"2026-01-15T00:00:00.000"}',
+        );
+      },
+      build: () => AuthBloc(authRepository: authRepository),
+      act: (bloc) => bloc.add(const AuthCheckRequested()),
+      expect: () => [
+        const AuthCheckingSession(),
+        isA<Authenticated>()
+            .having((s) => s.user.email, 'email', 'mudasir@gmail.com')
+            .having((s) => s.user.isPro, 'isPro', true),
       ],
     );
 
