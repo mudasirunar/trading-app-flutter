@@ -11,6 +11,7 @@ import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_dialog.dart';
 import '../../core/widgets/sparkline_chart.dart';
 import '../../core/widgets/status_badge.dart';
+import '../../core/widgets/platform_segmented_movers_control.dart';
 import '../../models/instrument_model.dart';
 import '../discovery/instrument_search_screen.dart';
 import '../instrument_detail/instrument_detail_screen.dart';
@@ -233,43 +234,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         letterSpacing: -0.2,
                       ),
                     ),
-                    // Movers Segmented Switch
-                    Container(
-                      padding: const EdgeInsets.all(2),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? AppColors.darkSurfaceSecondary
-                            : AppColors.lightSurfaceSecondary,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          _MoversTabPill(
-                            label: 'Gainers',
-                            isSelected: _selectedMoverTab == MarketMoversTab.gainers,
-                            onTap: () {
-                              AppHaptics.selection();
-                              setState(() => _selectedMoverTab = MarketMoversTab.gainers);
-                            },
-                          ),
-                          _MoversTabPill(
-                            label: 'Losers',
-                            isSelected: _selectedMoverTab == MarketMoversTab.losers,
-                            onTap: () {
-                              AppHaptics.selection();
-                              setState(() => _selectedMoverTab = MarketMoversTab.losers);
-                            },
-                          ),
-                          _MoversTabPill(
-                            label: 'Active',
-                            isSelected: _selectedMoverTab == MarketMoversTab.active,
-                            onTap: () {
-                              AppHaptics.selection();
-                              setState(() => _selectedMoverTab = MarketMoversTab.active);
-                            },
-                          ),
-                        ],
-                      ),
+                    // Movers Platform-Adaptive Segmented Control (Sliding Pill, No Glow)
+                    PlatformSegmentedMoversControl(
+                      selectedIndex: _selectedMoverTab.index,
+                      onTabSelected: (index) {
+                        setState(() => _selectedMoverTab = MarketMoversTab.values[index]);
+                      },
                     ),
                   ],
                 ),
@@ -834,41 +804,4 @@ class _QuickActionButton extends StatelessWidget {
   }
 }
 
-class _MoversTabPill extends StatelessWidget {
-  const _MoversTabPill({
-    required this.label,
-    required this.isSelected,
-    required this.onTap,
-  });
 
-  final String label;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(6),
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryBlue : Colors.transparent,
-          borderRadius: BorderRadius.circular(6),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-            color: isSelected
-                ? Colors.white
-                : (Theme.of(context).brightness == Brightness.dark
-                    ? AppColors.darkTextSecondary
-                    : AppColors.lightTextSecondary),
-          ),
-        ),
-      ),
-    );
-  }
-}

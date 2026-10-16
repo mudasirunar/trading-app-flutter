@@ -15,6 +15,11 @@ import UIKit
       registrar.register(factory, withId: "com.mudasir.tradingapp/liquid_bottom_bar")
     }
 
+    if let registrar = self.registrar(forPlugin: "NativeSegmentedControlPlugin") {
+      let factory = NativeSegmentedControlFactory(messenger: registrar.messenger())
+      registrar.register(factory, withId: "trading_app/native-segmented-control")
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

@@ -11,6 +11,7 @@ import 'package:trading_app/models/user_model.dart';
 import 'package:trading_app/repositories/auth/auth_repository.dart';
 import 'package:trading_app/repositories/market/market_repository.dart';
 import 'package:trading_app/services/market/simulated_exchange_data_source.dart';
+import 'package:trading_app/core/widgets/platform_segmented_movers_control.dart';
 import 'package:trading_app/views/dashboard/dashboard_screen.dart';
 
 void main() {
@@ -164,6 +165,26 @@ void main() {
       // Switch to Active
       await tester.tap(find.text('Active'));
       await tester.pump();
+    });
+
+    testWidgets('PlatformSegmentedMoversControl mounts UiKitView on iOS without assertion error', (
+      WidgetTester tester,
+    ) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(platform: TargetPlatform.iOS),
+          home: Scaffold(
+            body: PlatformSegmentedMoversControl(
+              selectedIndex: 0,
+              onTabSelected: (_) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      expect(find.byType(PlatformSegmentedMoversControl), findsOneWidget);
+      expect(find.byType(UiKitView), findsOneWidget);
     });
   });
 }

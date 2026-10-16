@@ -17,6 +17,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A10000012E11000100000002 /* NativeTabBarFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000012E11000100000001 /* NativeTabBarFactory.swift */; };
+		A10000012E11000100000004 /* NativeSegmentedControlFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = A10000012E11000100000003 /* NativeSegmentedControlFactory.swift */; };
 		CAC387AF263161E733FFC9C3 /* Pods_Runner.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8764C94E8B8322FBE6FE6FF5 /* Pods_Runner.framework */; };
 /* End PBXBuildFile section */
 
@@ -65,6 +66,7 @@
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A10000012E11000100000001 /* NativeTabBarFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeTabBarFactory.swift; sourceTree = "<group>"; };
+		A10000012E11000100000003 /* NativeSegmentedControlFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeSegmentedControlFactory.swift; sourceTree = "<group>"; };
 		ABCA1F9D50ED6F269902C842 /* Pods-Runner.profile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.profile.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.profile.xcconfig"; sourceTree = "<group>"; };
 		AFB47D186BA3FC08FDF8B2EE /* Pods-RunnerTests.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-RunnerTests.release.xcconfig"; path = "Target Support Files/Pods-RunnerTests/Pods-RunnerTests.release.xcconfig"; sourceTree = "<group>"; };
 		C05304087CA4E9DE82D5FBB4 /* Pods-Runner.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Runner.debug.xcconfig"; path = "Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"; sourceTree = "<group>"; };
@@ -157,6 +159,7 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				7884E8672EC3CC0400C636F2 /* SceneDelegate.swift */,
 				A10000012E11000100000001 /* NativeTabBarFactory.swift */,
+				A10000012E11000100000003 /* NativeSegmentedControlFactory.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 			);
 			path = Runner;
@@ -387,6 +390,7 @@
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
 				7884E8682EC3CC0700C636F2 /* SceneDelegate.swift in Sources */,
 				A10000012E11000100000002 /* NativeTabBarFactory.swift in Sources */,
+				A10000012E11000100000004 /* NativeSegmentedControlFactory.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
