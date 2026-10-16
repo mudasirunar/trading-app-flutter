@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_bottom_sheet.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_dialog.dart';
@@ -33,7 +33,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   void _submitLogin() {
     if (_formKey.currentState?.validate() ?? false) {
-      HapticFeedback.mediumImpact();
+      AppHaptics.medium();
       context.read<AuthBloc>().add(
             AuthLoginRequested(
               email: _emailController.text.trim(),
@@ -41,10 +41,13 @@ class _LoginScreenState extends State<LoginScreen> {
               rememberMe: _rememberMe,
             ),
           );
+    } else {
+      AppHaptics.error();
     }
   }
 
   void _showForgotPasswordSheet() {
+    AppHaptics.light();
     final resetController = TextEditingController(text: _emailController.text);
 
     AppBottomSheet.show(
@@ -76,6 +79,7 @@ class _LoginScreenState extends State<LoginScreen> {
           AppButton(
             text: 'Send Recovery Link',
             onPressed: () {
+              AppHaptics.medium();
               Navigator.pop(context);
               context.read<AuthBloc>().add(
                     AuthResetPasswordRequested(email: resetController.text.trim()),
@@ -88,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _showCreateAccountDialog() {
+    AppHaptics.light();
     AppDialog.show(
       context: context,
       type: AppDialogType.info,
@@ -108,7 +113,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is AuthFailure) {
-          HapticFeedback.heavyImpact();
+          AppHaptics.error();
           AppDialog.show(
             context: context,
             type: AppDialogType.danger,
@@ -117,7 +122,10 @@ class _LoginScreenState extends State<LoginScreen> {
             primaryButtonText: 'Try Again',
             onPrimaryPressed: () {},
           );
+        } else if (state is Authenticated) {
+          AppHaptics.success();
         } else if (state is AuthPasswordResetSuccess) {
+          AppHaptics.success();
           AppDialog.show(
             context: context,
             type: AppDialogType.success,
@@ -206,6 +214,7 @@ class _LoginScreenState extends State<LoginScreen> {
                               color: textSecondary,
                             ),
                             onPressed: () {
+                              AppHaptics.light();
                               setState(() => _isPasswordObscured = !_isPasswordObscured);
                             },
                           ),
@@ -229,6 +238,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             InkWell(
                               borderRadius: BorderRadius.circular(6),
                               onTap: () {
+                                AppHaptics.selection();
                                 setState(() => _rememberMe = !_rememberMe);
                               },
                               child: Padding(
@@ -245,6 +255,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                           borderRadius: BorderRadius.circular(4),
                                         ),
                                         onChanged: (val) {
+                                          AppHaptics.selection();
                                           setState(() => _rememberMe = val ?? true);
                                         },
                                       ),
