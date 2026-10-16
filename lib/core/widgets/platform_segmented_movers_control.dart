@@ -139,11 +139,11 @@ class _AndroidLiquidGlassSegmentedControlState
   static const double _barHeight = 36;
   static const double _barWidth = 240;
   static const double _inset = 3;
-  static const double _lensRise = 2;
-  static const double _lensDrop = 2;
+  static const double _lensRise = 8.5; // Outward expansion above borders when raised
+  static const double _lensDrop = 8.5; // Outward expansion below borders when raised
   static const _barRadius = BorderRadius.all(Radius.circular(_barHeight / 2));
 
-  // Physics springs from LIQUID_GLASS_BOTTOM_BAR_GUIDE.md
+  // Physics springs directly from LiquidGlassBottomBar
   static final _settleSpring = SpringDescription.withDampingRatio(
     mass: 1,
     stiffness: 380,
@@ -152,13 +152,12 @@ class _AndroidLiquidGlassSegmentedControlState
   static final _pressSpring = SpringDescription.withDampingRatio(
     mass: 1,
     stiffness: 300,
-    ratio: 0.5, // Jelly deformation
+    ratio: 0.5, // Jelly deformation overshoot
   );
 
   late final AnimationController _c; // Fractional position (0..2)
   late final AnimationController _press; // 0 = resting, 1 = held/dragged
   late int _target;
-  int _liftedFrom = 0;
   bool _dragging = false;
   bool _pressed = false;
   int _lastHapticIndex = 0;
@@ -169,17 +168,17 @@ class _AndroidLiquidGlassSegmentedControlState
     _MoversTabData(
       label: 'Gainers',
       icon: Icons.trending_up_rounded,
-      color: Color(0xFF10B981), // Emerald
+      color: Color(0xFF059669), // Rich Emerald (#059669)
     ),
     _MoversTabData(
       label: 'Losers',
       icon: Icons.trending_down_rounded,
-      color: Color(0xFFEF4444), // Crimson
+      color: Color(0xFFDC2626), // Rich Crimson (#DC2626)
     ),
     _MoversTabData(
       label: 'Active',
       icon: Icons.local_fire_department_rounded,
-      color: Color(0xFFF59E0B), // Flame Amber
+      color: Color(0xFFD97706), // Rich Flame Amber (#D97706)
     ),
   ];
 
@@ -187,7 +186,6 @@ class _AndroidLiquidGlassSegmentedControlState
   void initState() {
     super.initState();
     _target = widget.selectedIndex.clamp(0, 2);
-    _liftedFrom = _target;
     _lastHapticIndex = _target;
     _c = AnimationController.unbounded(
       vsync: this,
@@ -202,9 +200,6 @@ class _AndroidLiquidGlassSegmentedControlState
     final newIdx = widget.selectedIndex.clamp(0, 2);
     if (!_dragging && newIdx != _target) {
       _animateTo(newIdx);
-    }
-    if (!_dragging) {
-      _liftedFrom = newIdx;
     }
   }
 
@@ -226,45 +221,51 @@ class _AndroidLiquidGlassSegmentedControlState
     if (_pressed == p) return;
     _pressed = p;
     _press.animateWith(
-      SpringSimulation(_pressSpring, _press.value, p ? 1.0 : 0.0, 0),
+      SpringSimulation(_pressSpring, _press.value, p ? 1.0 : 0.0, _press.velocity),
     );
   }
 
+  // Unrestricted drag coordinate with natural rubberband outward allowance beyond ends
   double _posFromDx(double dx) =>
-      ((dx - _inset) / _itemWidth - 0.5).clamp(0.0, 2.0).toDouble();
+      ((dx - _inset) / _itemWidth - 0.5).clamp(-0.20, 2.20).toDouble();
 
+  // Pointer down: If tapping near the current lens, expand immediately
   void _onPointerDown(PointerDownEvent e) {
-    _liftedFrom = widget.selectedIndex.clamp(0, 2);
-    _setPressed(true);
+    if ((_posFromDx(e.localPosition.dx) - _c.value).abs() < 0.7) {
+      _setPressed(true);
+    }
   }
 
-  void _onPointerUp(PointerUpEvent e) {
+  void _onPointerUp(PointerEvent e) {
     if (!_dragging) _setPressed(false);
   }
 
-  void _onPointerCancel(PointerCancelEvent e) {
+  void _onPointerCancel(PointerEvent e) {
     if (!_dragging) _setPressed(false);
   }
 
+  // Drag start: stop spring simulation and take direct 1:1 manual control
   void _onDragStart(DragStartDetails d) {
     _dragging = true;
-    _liftedFrom = widget.selectedIndex.clamp(0, 2);
     _c.stop();
     _dragPos = _posFromDx(d.localPosition.dx);
-    _c.value = _dragPos;
+    _lastHapticIndex = _c.value.round().clamp(0, 2);
     _setPressed(true);
+    _c.value = _dragPos;
   }
 
+  // Drag update: 1:1 finger tracking with tactile haptic notch on tab change
   void _onDragUpdate(DragUpdateDetails d) {
     _dragPos = _posFromDx(d.localPosition.dx);
     _c.value = _dragPos;
-    final idx = _dragPos.round().clamp(0, 2);
-    if (idx != _lastHapticIndex) {
-      _lastHapticIndex = idx;
+    final nearest = _dragPos.round().clamp(0, 2);
+    if (nearest != _lastHapticIndex) {
+      _lastHapticIndex = nearest;
       AppHaptics.selection();
     }
   }
 
+  // Drag end: velocity momentum projection and spring snap
   void _onDragEnd(DragEndDetails d) {
     final vel = d.velocity.pixelsPerSecond.dx / _itemWidth;
     final target = (_dragPos + vel * 0.08).round().clamp(0, 2).toInt();
@@ -285,24 +286,9 @@ class _AndroidLiquidGlassSegmentedControlState
 
   void _onItemTap(int index) {
     AppHaptics.selection();
-    _liftedFrom = index;
-    _animateTo(index);
     if (index != widget.selectedIndex) {
+      _animateTo(index);
       widget.onTabSelected(index);
-    }
-  }
-
-  Color _computeActiveColor(double pos) {
-    final clamped = pos.clamp(0.0, 2.0);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final c0 = isDark ? _tabs[0].color : const Color(0xFF047857);
-    final c1 = isDark ? _tabs[1].color : const Color(0xFFB91C1C);
-    final c2 = isDark ? _tabs[2].color : const Color(0xFFB45309);
-
-    if (clamped <= 1.0) {
-      return Color.lerp(c0, c1, clamped)!;
-    } else {
-      return Color.lerp(c1, c2, clamped - 1.0)!;
     }
   }
 
@@ -326,7 +312,7 @@ class _AndroidLiquidGlassSegmentedControlState
               _itemWidth = (constraints.maxWidth - _inset * 2) / 3.0;
 
               return Stack(
-                clipBehavior: Clip.none,
+                clipBehavior: Clip.none, // Allows fluid expanding lens to overflow
                 children: [
                   Positioned.fill(child: _buildGlass()),
                   _buildLens(),
@@ -380,32 +366,38 @@ class _AndroidLiquidGlassSegmentedControlState
   }
 
   Widget _buildLens() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return AnimatedBuilder(
       animation: Listenable.merge([_c, _press]),
       builder: (context, _) {
-        final pos = _c.value;
-        final pressFactor = _press.value.clamp(0.0, 1.0);
-        final baseWidth = _itemWidth;
-        final currentWidth = baseWidth * (1.0 + 0.12 * pressFactor);
-        final center = _inset + (pos + 0.5) * _itemWidth;
-        final left = center - currentWidth / 2;
-        final top = _inset - _lensRise * pressFactor;
-        final height =
-            (_barHeight - _inset * 2) + (_lensRise + _lensDrop) * pressFactor;
-        final activeColor = _computeActiveColor(pos);
-        final isDark = Theme.of(context).brightness == Brightness.dark;
+        final p = _press.value.clamp(0.0, 1.3).toDouble();
+        final stretch = (_c.velocity.abs() * 0.05).clamp(0.0, 0.4).toDouble();
+
+        // Liquid jelly stretch & vertical expansion overflowing outside the borders
+        final w = (_itemWidth - 2) * (1.0 + 0.26 * p + stretch);
+        final h = ((_barHeight - _inset * 2) + (_lensRise + _lensDrop) * p) *
+            (1.0 - stretch * 0.12);
+
+        final cx = _inset + (_c.value + 0.5) * _itemWidth;
+        final cy = _barHeight / 2 - (_lensRise - _lensDrop) / 2 * p;
+
+        // Solid tab color on selected; exact same 3 colors for both modes
+        final targetTab = _c.value.round().clamp(0, 2);
+        final activeColor = _tabs[targetTab].color;
 
         return Positioned(
-          left: left,
-          top: top,
-          width: currentWidth,
-          height: height,
-          child: CustomPaint(
-            painter: _MiniLensPainter(
-              height: height,
-              activeColor: activeColor,
-              pressFactor: pressFactor,
-              isDark: isDark,
+          left: cx - w / 2,
+          top: cy - h / 2,
+          width: w,
+          height: h,
+          child: IgnorePointer(
+            child: CustomPaint(
+              painter: _LensPainter(
+                press: p,
+                activeColor: activeColor,
+                isDark: isDark,
+              ),
             ),
           ),
         );
@@ -421,72 +413,69 @@ class _AndroidLiquidGlassSegmentedControlState
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _onItemTap(index),
-        child: AnimatedBuilder(
-          animation: Listenable.merge([_c, _press]),
-          builder: (context, _) {
-            // Proximity of the sliding lens (0.0 = away, 1.0 = centered)
-            final dist = (_c.value - index).abs().clamp(0.0, 1.0);
-            final proximity = 1.0 - dist;
+        child: SizedBox(
+          height: _barHeight,
+          child: AnimatedBuilder(
+            animation: Listenable.merge([_c, _press]),
+            builder: (context, _) {
+              final t = (1.0 - (_c.value - index).abs()).clamp(0.0, 1.0).toDouble();
+              final press = _press.value.clamp(0.0, 1.3).toDouble();
+              final active = t > 0.5;
 
-            // When dragging: retain the active color on the lifted-from tab
-            // until the pill is released and put onto another tab!
-            final bool isLiftedFrom = _dragging && (index == _liftedFrom);
-            final double active = isLiftedFrom ? 1.0 : proximity;
+              Color color;
+              if (isDark) {
+                // Dark Mode: Keep as is (Active is white, inactive is Slate 400)
+                final inactiveColor = const Color(0xFF94A3B8);
+                color = Color.lerp(inactiveColor, Colors.white, t)!;
+              } else {
+                // Light Mode:
+                // When pill is raised (dragged or pressed): ALL tabs turn black.
+                // No dynamic color changing based on hover!
+                // Only when placed at rest on a tab does that tab change to white while others remain black.
+                const blackColor = Color(0xFF0F172A);
+                final isRaised = _dragging || _press.value > 0.12;
 
-            // Inactive colors calibrated for environment contrast:
-            // Dark Mode: Crisp Slate 400 (#94A3B8)
-            // Light Mode: High-contrast Slate 600 (#475569) - NEVER white!
-            final inactiveColor = isDark
-                ? const Color(0xFF94A3B8)
-                : const Color(0xFF475569);
+                if (isRaised) {
+                  color = blackColor;
+                } else {
+                  final isPlacedHere = (index == _target) && (_c.value - index).abs() < 0.35;
+                  color = isPlacedHere ? Colors.white : blackColor;
+                }
+              }
 
-            // Active colors tailored for perfect visibility and beauty:
-            // Dark Mode: Bright luminous trading colors
-            // Light Mode: Deep, rich, high-contrast trading colors (Emerald #047857, Crimson #B91C1C, Amber #B45309)
-            final activeColor = isDark
-                ? item.color
-                : (index == 0
-                    ? const Color(0xFF047857) // Deep Emerald
-                    : index == 1
-                        ? const Color(0xFFB91C1C) // Deep Crimson
-                        : const Color(0xFFB45309)); // Deep Flame Amber
-
-            // Smooth dynamic transition:
-            // Lifted tab keeps its color locked; approaching tab lights up as lens approaches!
-            final color = Color.lerp(inactiveColor, activeColor, active)!;
-
-            return Center(
-              child: Transform.scale(
-                scale: 1.0 + 0.05 * active,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      item.icon,
-                      size: 12.5,
-                      color: color,
-                    ),
-                    const SizedBox(width: 3.5),
-                    Flexible(
-                      child: Text(
-                        item.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.clip,
-                        style: TextStyle(
-                          fontSize: 10.5,
-                          fontWeight:
-                              active > 0.4 ? FontWeight.w800 : FontWeight.w600,
-                          color: color,
-                          letterSpacing: -0.2,
+              return Center(
+                child: Transform.scale(
+                  scale: 1.0 + 0.06 * t + 0.04 * t * press,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        item.icon,
+                        size: 13,
+                        color: color,
+                      ),
+                      const SizedBox(width: 3.5),
+                      Flexible(
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.clip,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight:
+                                active ? FontWeight.w800 : FontWeight.w600,
+                            color: color,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            );
-          },
+              );
+            },
+          ),
         ),
       ),
     );
@@ -588,90 +577,97 @@ class _GlassBorderPainter extends CustomPainter {
       oldDelegate.isDark != isDark;
 }
 
-/// Deformable Mini Liquid Jelly Lens Painter
-class _MiniLensPainter extends CustomPainter {
-  final double height;
+/// Liquid Glass Lens Painter derived directly from LiquidGlassBottomBar:
+/// - Solid tab color when resting on selected tab (matching iOS native UI)
+/// - Transparent liquid glass when lifted and dragged
+/// - Inverted mask shadow for crystal-clear refraction without muddy dark spots
+/// - Specular highlight rim stroke
+class _LensPainter extends CustomPainter {
+  final double press;
   final Color activeColor;
-  final double pressFactor;
   final bool isDark;
 
-  const _MiniLensPainter({
-    required this.height,
+  const _LensPainter({
+    required this.press,
     required this.activeColor,
-    required this.pressFactor,
     required this.isDark,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
+    final q = press.clamp(0.0, 1.0).toDouble();
+    final rect = Offset.zero & size;
     final rrect = RRect.fromRectAndRadius(
-      Offset.zero & size,
-      Radius.circular(height / 2),
+      rect,
+      Radius.circular(size.shortestSide / 2),
     );
 
-    // 1. Soft Lens Shadow via Inverted Mask
-    final outerRect = (Offset.zero & size).inflate(16);
-    final clipPath = Path()
-      ..addRect(outerRect)
-      ..addRRect(rrect)
-      ..fillType = PathFillType.evenOdd;
-
+    // 1. Inverted Mask Shadow (Outside only, avoiding dark shadows under transparent glass)
+    final outside = Path.combine(
+      PathOperation.difference,
+      Path()..addRect(rect.inflate(40)),
+      Path()..addRRect(rrect),
+    );
     canvas.save();
-    canvas.clipPath(clipPath);
-
-    final shadowPaint = Paint()
-      ..color = activeColor.withValues(alpha: isDark ? 0.40 : 0.28)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 6 + 3 * pressFactor);
-
-    canvas.drawRRect(rrect.shift(const Offset(0, 1.5)), shadowPaint);
+    canvas.clipPath(outside);
+    canvas.drawRRect(
+      rrect.shift(Offset(0, 2 + 4 * q)),
+      Paint()
+        ..color = (isDark ? Colors.black : const Color(0xFF0F172A))
+            .withValues(alpha: isDark ? (0.22 + 0.18 * q) : (0.08 + 0.12 * q))
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 5 + 6 * q),
+    );
     canvas.restore();
 
-    // 2. Subtle Liquid Glass Tint that adopts the active trading color
+    // 2. Color fill: Pure solid color when on tab, 100% transparent (no color) when sliding/raised!
+    final fillOpacity = lerpDouble(1.0, 0.0, (q * 2.0).clamp(0.0, 1.0))!;
+    if (fillOpacity > 0.005) {
+      canvas.drawRRect(
+        rrect,
+        Paint()..color = activeColor.withValues(alpha: fillOpacity),
+      );
+    }
+
+    // 3. Inner Specular Body Glass Gradient (Clear optical glass when sliding, subtle sheen at rest)
     canvas.drawRRect(
       rrect,
       Paint()
-        ..color = activeColor.withValues(
-          alpha: isDark ? 0.22 : 0.14,
-        ),
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: isDark
+              ? [
+                  Colors.white.withValues(alpha: lerpDouble(0.04, 0.22, q)!),
+                  Colors.white.withValues(alpha: lerpDouble(0.0, 0.04, q)!),
+                ]
+              : [
+                  Colors.white.withValues(alpha: lerpDouble(0.04, 0.25, q)!),
+                  Colors.white.withValues(alpha: lerpDouble(0.0, 0.04, q)!),
+                ],
+        ).createShader(rect),
     );
 
-    // 3. Inner Specular Body Glass Gradient (Reflection & Depth)
-    final shimmerPaint = Paint()
-      ..shader = LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: isDark
-            ? [
-                Colors.white.withValues(alpha: 0.22 + 0.08 * pressFactor),
-                Colors.white.withValues(alpha: 0.04 + 0.04 * pressFactor),
-              ]
-            : [
-                Colors.white.withValues(alpha: 0.75 + 0.15 * pressFactor),
-                Colors.white.withValues(alpha: 0.20 + 0.10 * pressFactor),
-              ],
-      ).createShader(Offset.zero & size);
-    canvas.drawRRect(rrect, shimmerPaint);
-
-    // 4. Multi-stop Specular Rim Highlight (Crisp 3D Glass Edge)
-    final rimPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.0
-      ..shader = LinearGradient(
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-        colors: [
-          Colors.white.withValues(alpha: 0.95),
-          Colors.white.withValues(alpha: 0.20),
-          Colors.white.withValues(alpha: 0.70),
-        ],
-      ).createShader(Offset.zero & size);
-    canvas.drawRRect(rrect.deflate(0.5), rimPaint);
+    // 4. Multi-layer Specular Rim Highlight (Liquid glass edge)
+    canvas.drawRRect(
+      rrect.deflate(0.6),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.0
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.white.withValues(alpha: lerpDouble(0.60, 0.95, q)!),
+            Colors.white.withValues(alpha: lerpDouble(0.10, 0.20, q)!),
+            Colors.white.withValues(alpha: lerpDouble(0.30, 0.80, q)!),
+          ],
+        ).createShader(rect),
+    );
   }
 
   @override
-  bool shouldRepaint(covariant _MiniLensPainter oldDelegate) =>
-      oldDelegate.height != height ||
-      oldDelegate.activeColor != activeColor ||
-      oldDelegate.pressFactor != pressFactor ||
-      oldDelegate.isDark != isDark;
+  bool shouldRepaint(covariant _LensPainter old) =>
+      old.press != press ||
+      old.activeColor != activeColor ||
+      old.isDark != isDark;
 }

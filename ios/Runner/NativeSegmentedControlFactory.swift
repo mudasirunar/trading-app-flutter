@@ -36,17 +36,17 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
         TabSpec(
             title: "Gainers",
             iconName: "trending.up",
-            color: UIColor(red: 16.0 / 255.0, green: 185.0 / 255.0, blue: 129.0 / 255.0, alpha: 1.0)
+            color: UIColor(red: 5.0 / 255.0, green: 150.0 / 255.0, blue: 105.0 / 255.0, alpha: 1.0)
         ),
         TabSpec(
             title: "Losers",
             iconName: "trending.down",
-            color: UIColor(red: 239.0 / 255.0, green: 68.0 / 255.0, blue: 68.0 / 255.0, alpha: 1.0)
+            color: UIColor(red: 220.0 / 255.0, green: 38.0 / 255.0, blue: 38.0 / 255.0, alpha: 1.0)
         ),
         TabSpec(
             title: "Active",
             iconName: "flame.fill",
-            color: UIColor(red: 245.0 / 255.0, green: 158.0 / 255.0, blue: 11.0 / 255.0, alpha: 1.0)
+            color: UIColor(red: 217.0 / 255.0, green: 119.0 / 255.0, blue: 6.0 / 255.0, alpha: 1.0)
         )
     ]
 

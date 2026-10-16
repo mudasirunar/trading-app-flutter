@@ -221,33 +221,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
                 const SizedBox(height: 26),
 
-                // 4. Market Movers Section
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                // 4. Market Movers Section (Stacked with clipBehavior: Clip.none so expanding pill paints ABOVE the cards)
+                Stack(
+                  clipBehavior: Clip.none,
                   children: [
-                    Text(
-                      'Market Movers',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: textPrimary,
-                        letterSpacing: -0.2,
-                      ),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 48),
+                      child: _buildMoversList(instruments),
                     ),
-                    // Movers Platform-Adaptive Segmented Control (Sliding Pill, No Glow)
-                    PlatformSegmentedMoversControl(
-                      selectedIndex: _selectedMoverTab.index,
-                      onTabSelected: (index) {
-                        setState(() => _selectedMoverTab = MarketMoversTab.values[index]);
-                      },
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Market Movers',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: textPrimary,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        // Movers Platform-Adaptive Segmented Control (Sliding Pill, No Glow)
+                        PlatformSegmentedMoversControl(
+                          selectedIndex: _selectedMoverTab.index,
+                          onTabSelected: (index) {
+                            setState(() => _selectedMoverTab = MarketMoversTab.values[index]);
+                          },
+                        ),
+                      ],
                     ),
                   ],
                 ),
-
-                const SizedBox(height: 12),
-
-                // Filtered Movers List
-                _buildMoversList(instruments),
               ],
             ),
           );
