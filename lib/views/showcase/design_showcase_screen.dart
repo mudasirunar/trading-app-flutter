@@ -10,6 +10,10 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/platform_bottom_bar.dart';
 import '../../core/widgets/status_badge.dart';
 
+import '../../blocs/auth/auth_bloc.dart';
+import '../../blocs/auth/auth_event.dart';
+import '../../blocs/auth/auth_state.dart';
+
 class DesignShowcaseScreen extends StatefulWidget {
   const DesignShowcaseScreen({super.key});
 
@@ -118,13 +122,47 @@ class _DesignShowcaseScreenState extends State<DesignShowcaseScreen> {
       appBar: AppBar(
         title: const Text('Trading App Design System'),
         actions: [
+          BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, authState) {
+              if (authState is Authenticated) {
+                return Padding(
+                  padding: const EdgeInsets.only(right: 4),
+                  child: StatusBadge(
+                    customLabel: authState.user.isPro ? 'PRO' : 'PRACTICE',
+                    customColor: authState.user.isPro
+                        ? AppColors.primaryBlue
+                        : AppColors.warningAmber,
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
           IconButton(
             icon: Icon(
               isDark ? Icons.light_mode_rounded : Icons.dark_mode_rounded,
-              size: 22,
+              size: 20,
             ),
             tooltip: 'Toggle Theme',
             onPressed: () => context.read<ThemeCubit>().toggleTheme(),
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout_rounded, size: 20),
+            tooltip: 'Sign Out',
+            onPressed: () {
+              AppDialog.show(
+                context: context,
+                type: AppDialogType.warning,
+                title: 'Confirm Sign Out',
+                message:
+                    'Are you sure you want to terminate your active trading terminal session?',
+                primaryButtonText: 'Sign Out',
+                secondaryButtonText: 'Cancel',
+                onPrimaryPressed: () {
+                  context.read<AuthBloc>().add(const AuthLogoutRequested());
+                },
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],
