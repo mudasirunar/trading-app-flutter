@@ -38,6 +38,7 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       extendBody: true,
       body: IndexedStack(
         index: _currentIndex,
