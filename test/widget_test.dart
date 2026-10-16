@@ -1,30 +1,28 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:trading_app/main.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  setUp(() {
+    SharedPreferences.setMockInitialValues({});
+  });
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+  testWidgets('TradingApp design showcase loads and renders core components', (WidgetTester tester) async {
+    await tester.pumpWidget(const TradingApp());
+    await tester.pumpAndSettle();
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
+    // Verify Title & Design Showcase loaded
+    expect(find.text('Trading App Design System'), findsOneWidget);
+    expect(find.text('Phase 2: Design Tokens & Reusable UI'), findsOneWidget);
 
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Verify Form Fields
+    expect(find.text('Account Email'), findsOneWidget);
+    expect(find.text('Password'), findsOneWidget);
+
+    // Verify Theme toggle button exists
+    expect(find.byTooltip('Toggle Theme'), findsOneWidget);
+
+    // Verify Action Buttons exist
+    expect(find.text('Primary Trade Action (Market Buy)'), findsOneWidget);
   });
 }
