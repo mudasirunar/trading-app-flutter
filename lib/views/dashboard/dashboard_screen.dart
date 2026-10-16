@@ -92,8 +92,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   child: StatusBadge(
                     customLabel: authState.user.isPro ? 'PRO TIER' : 'PRACTICE',
                     customColor: authState.user.isPro
-                        ? AppColors.primaryBlue
-                        : AppColors.warningAmber,
+                        ? const Color(0xFFF59E0B)
+                        : const Color(0xFF3B82F6),
+                    leading: authState.user.isPro
+                        ? const CrownIcon(size: 11, color: Color(0xFFF59E0B))
+                        : null,
                   ),
                 );
               }

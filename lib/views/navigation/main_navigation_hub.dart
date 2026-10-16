@@ -227,8 +227,11 @@ class _SettingsTab extends StatelessWidget {
                       StatusBadge(
                         customLabel: user?.isPro == true ? 'PRO TIER' : 'PRACTICE',
                         customColor: user?.isPro == true
-                            ? AppColors.primaryBlue
-                            : AppColors.warningAmber,
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF3B82F6),
+                        leading: user?.isPro == true
+                            ? const CrownIcon(size: 11, color: Color(0xFFF59E0B))
+                            : null,
                       ),
                     ],
                   ),
