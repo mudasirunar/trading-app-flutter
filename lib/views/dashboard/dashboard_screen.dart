@@ -209,7 +209,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     height: 125,
                     child: ListView.separated(
                       scrollDirection: Axis.horizontal,
-                      itemCount: instruments.take(6).length,
+                      itemCount: instruments.take(8).length,
                       separatorBuilder: (_, _) => const SizedBox(width: 12),
                       itemBuilder: (context, index) {
                         final item = instruments[index];
@@ -684,6 +684,18 @@ class _WatchlistHighlightCard extends StatelessWidget {
     final isPositive = instrument.change >= 0;
     final trendColor = isPositive ? AppColors.bullGreen : AppColors.bearRed;
 
+    String formatPrice(double price) {
+      if (price >= 1000.0) {
+        final parts = price.toStringAsFixed(2).split('.');
+        final whole = parts[0].replaceAllMapped(
+          RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+          (Match m) => '${m[1]},',
+        );
+        return '\$$whole.${parts[1]}';
+      }
+      return '\$${price.toStringAsFixed(2)}';
+    }
+
     return Material(
       color: cardBg,
       shape: RoundedRectangleBorder(
@@ -741,7 +753,7 @@ class _WatchlistHighlightCard extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      '\$${instrument.currentPrice.toStringAsFixed(2)}',
+                      formatPrice(instrument.currentPrice),
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w700,

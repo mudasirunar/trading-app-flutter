@@ -216,6 +216,16 @@ class MarketBloc extends Bloc<MarketEvent, MarketState> {
     'XOM': ['exxon', 'mobil', 'exxonmobil', 'oil', 'gas'],
     'WMT': ['walmart', 'supercenter'],
     'MCD': ['mcdonalds', 'mcdonald', 'burger', 'fast food'],
+    'SMSN': ['samsung', 'galaxy', 'korea', 'electronics', 'smartphones', 'fold'],
+    'SONY': ['sony', 'playstation', 'ps5', 'ps4', 'bravia', 'gaming', 'walkman'],
+    'TTWO': ['rockstar', 'rockstar games', 'gta', 'gta 6', 'gta6', 'grand theft auto', 'red dead', 'take-two', 'ttwo', '2k'],
+    'ANTH': ['anthropic', 'claude', 'claude ai', 'claude 5', 'dario amodei', 'ai'],
+    'OPAI': ['openai', 'chatgpt', 'chat gpt', 'gpt', 'sam altman', 'dall-e', 'sora', 'ai'],
+    'MA': ['mastercard', 'master card', 'credit card', 'payments'],
+    'NFLX': ['netflix', 'streaming', 'movies', 'series'],
+    'INTC': ['intel', 'core', 'chips', 'semiconductors', 'processors', 'x86'],
+    'DIS': ['disney', 'walt disney', 'marvel', 'star wars', 'pixar', 'disney+'],
+    'NKE': ['nike', 'shoes', 'sneakers', 'jordan', 'air jordan', 'apparel', 'just do it'],
   };
 
   List<InstrumentModel> _filterInstruments(

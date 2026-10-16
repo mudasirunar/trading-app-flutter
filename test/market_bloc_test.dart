@@ -32,13 +32,13 @@ void main() {
     });
 
     blocTest<MarketBloc, MarketState>(
-      'MarketStarted emits [MarketLoading, MarketLoaded] with 15 assets and initial chart candles',
+      'MarketStarted emits [MarketLoading, MarketLoaded] with 25 assets and initial chart candles',
       build: () => MarketBloc(marketRepository: repository),
       act: (bloc) => bloc.add(const MarketStarted(defaultSymbol: 'AAPL')),
       expect: () => [
         const MarketLoading(),
         isA<MarketLoaded>()
-            .having((s) => s.instruments.length, 'instruments count', 15)
+            .having((s) => s.instruments.length, 'instruments count', 25)
             .having((s) => s.selectedSymbol, 'selectedSymbol', 'AAPL')
             .having((s) => s.selectedCandles.length, 'candles count', 78)
             .having((s) => s.isFeedLive, 'isFeedLive', isTrue)
