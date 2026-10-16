@@ -13,6 +13,8 @@ import '../../core/widgets/status_badge.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
+import '../../blocs/market/market_bloc.dart';
+import '../../blocs/market/market_event.dart';
 
 class DesignShowcaseScreen extends StatefulWidget {
   const DesignShowcaseScreen({super.key});
@@ -26,6 +28,12 @@ class _DesignShowcaseScreenState extends State<DesignShowcaseScreen> {
   bool _isPasswordVisible = false;
   final TextEditingController _emailController = TextEditingController(text: 'mudasir@gmail.com');
   final TextEditingController _passwordController = TextEditingController(text: 'Test123');
+
+  @override
+  void initState() {
+    super.initState();
+    context.read<MarketBloc>().add(const MarketStarted());
+  }
 
   @override
   void dispose() {

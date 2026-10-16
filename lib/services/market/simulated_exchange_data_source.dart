@@ -1,0 +1,652 @@
+import 'dart:async';
+import 'dart:math' as math;
+
+import '../../models/candle_model.dart';
+import '../../models/instrument_model.dart';
+import 'i_market_data_source.dart';
+
+/// Production-grade stochastic market data engine utilizing Geometric Brownian Motion.
+/// Generates 24/7 continuous tick streaming, dynamic candle mutations, and multi-timeframe OHLCV bars.
+class SimulatedExchangeDataSource implements IMarketDataSource {
+  SimulatedExchangeDataSource({
+    this.tickInterval = const Duration(milliseconds: 1500),
+    int? randomSeed,
+  }) : _random = randomSeed != null ? math.Random(randomSeed) : math.Random();
+
+  final Duration tickInterval;
+  final math.Random _random;
+
+  Timer? _tickTimer;
+  StreamController<List<InstrumentModel>>? _streamController;
+
+  // In-memory state of active instruments
+  final Map<String, InstrumentModel> _instrumentCatalog = {};
+
+  // In-memory cache for historical candles per symbol and timeframe
+  final Map<String, Map<MarketTimeframe, List<CandleModel>>> _candleCache = {};
+
+  @override
+  Stream<List<InstrumentModel>> get quoteStream {
+    _streamController ??=
+        StreamController<List<InstrumentModel>>.broadcast();
+    return _streamController!.stream;
+  }
+
+  @override
+  Future<List<InstrumentModel>> fetchInitialInstruments() async {
+    if (_instrumentCatalog.isEmpty) {
+      _seedCatalog();
+    }
+    return _instrumentCatalog.values.toList(growable: false);
+  }
+
+  @override
+  Future<List<CandleModel>> fetchCandles(
+    String symbol,
+    MarketTimeframe timeframe,
+  ) async {
+    if (_instrumentCatalog.isEmpty) {
+      _seedCatalog();
+    }
+
+    final instrument = _instrumentCatalog[symbol] ??
+        _instrumentCatalog.values.first;
+
+    _candleCache.putIfAbsent(symbol, () => {});
+    if (!_candleCache[symbol]!.containsKey(timeframe)) {
+      _candleCache[symbol]![timeframe] = _generateHistoricalCandles(
+        instrument: instrument,
+        timeframe: timeframe,
+      );
+    }
+
+    return List<CandleModel>.from(_candleCache[symbol]![timeframe]!);
+  }
+
+  @override
+  void startStream() {
+    if (_instrumentCatalog.isEmpty) {
+      _seedCatalog();
+    }
+
+    if (_tickTimer != null && _tickTimer!.isActive) return;
+
+    _tickTimer = Timer.periodic(tickInterval, (_) => _processTick());
+  }
+
+  @override
+  void stopStream() {
+    _tickTimer?.cancel();
+    _tickTimer = null;
+  }
+
+  @override
+  void dispose() {
+    stopStream();
+    _streamController?.close();
+    _streamController = null;
+  }
+
+  // ===========================================================================
+  // STOCHASTIC TICK ENGINE (Geometric Brownian Motion)
+  // ===========================================================================
+
+  void _processTick() {
+    if (_instrumentCatalog.isEmpty) return;
+
+    final updatedList = <InstrumentModel>[];
+    final now = DateTime.now();
+
+    for (final instrument in _instrumentCatalog.values) {
+      final updated = _computeNextTick(instrument, now);
+      _instrumentCatalog[instrument.symbol] = updated;
+      updatedList.add(updated);
+
+      // Mutate the active in-flight candle if currently loaded in cache
+      _mutateActiveCandle(updated);
+    }
+
+    if (_streamController != null && !_streamController!.isClosed) {
+      _streamController!.add(updatedList);
+    }
+  }
+
+  InstrumentModel _computeNextTick(InstrumentModel current, DateTime now) {
+    final volatility = _getSectorVolatility(current.sector);
+
+    // Delta t in years for a 1.5-second tick interval (assuming 252 trading days, 6.5h session)
+    const double dt = 1.5 / (252.0 * 6.5 * 3600.0);
+
+    // Mild mean-reverting drift toward openPrice to prevent runaway divergence
+    final double drift = 0.05 * ((current.openPrice - current.currentPrice) / current.openPrice);
+
+    // Box-Muller Gaussian standard normal variate Z ~ N(0, 1)
+    final double z = _boxMullerGaussian();
+
+    // Geometric Brownian Motion step: S_t = S_{t-1} * exp((mu - 0.5 * sigma^2) * dt + sigma * sqrt(dt) * Z)
+    final double exponent = (drift - 0.5 * volatility * volatility) * dt +
+        volatility * math.sqrt(dt) * z;
+    double newPrice = current.currentPrice * math.exp(exponent);
+
+    // Financial terminal rounding to 2 decimal places
+    newPrice = double.parse(newPrice.toStringAsFixed(2));
+    if (newPrice <= 0.01) newPrice = 0.01;
+
+    // Price direction determination
+    final PriceDirection direction;
+    if (newPrice > current.currentPrice) {
+      direction = PriceDirection.up;
+    } else if (newPrice < current.currentPrice) {
+      direction = PriceDirection.down;
+    } else {
+      direction = PriceDirection.none;
+    }
+
+    // 24h High and Low updates
+    final newHigh = newPrice > current.high24h ? newPrice : current.high24h;
+    final newLow = newPrice < current.low24h ? newPrice : current.low24h;
+
+    // Change metrics relative to previousClose
+    final change = double.parse((newPrice - current.previousClose).toStringAsFixed(2));
+    final changePercentage = current.previousClose > 0
+        ? double.parse(((change / current.previousClose) * 100).toStringAsFixed(2))
+        : 0.0;
+
+    // Institutional Bid/Ask spread modeling (0.02% - 0.04% of price)
+    final spreadRate = 0.0002 + (_random.nextDouble() * 0.0002);
+    final spread = double.parse(math.max(0.01, newPrice * spreadRate).toStringAsFixed(2));
+    final halfSpread = spread / 2.0;
+
+    final bidPrice = double.parse(math.max(0.01, newPrice - halfSpread).toStringAsFixed(2));
+    final askPrice = double.parse((newPrice + halfSpread).toStringAsFixed(2));
+
+    // Dynamic depth block sizes
+    final bidSize = 100 + (_random.nextInt(40) * 100);
+    final askSize = 100 + (_random.nextInt(40) * 100);
+
+    // Incremental trading volume
+    final addedVolume = 50.0 + _random.nextInt(250).toDouble();
+    final newVolume = current.volume + addedVolume;
+
+    // Dynamic sparkline update (sliding window of 25 points)
+    final updatedSparkline = List<double>.from(current.sparkline);
+    if (updatedSparkline.isNotEmpty) {
+      updatedSparkline.add(newPrice);
+      if (updatedSparkline.length > 25) {
+        updatedSparkline.removeAt(0);
+      }
+    }
+
+    return current.copyWith(
+      currentPrice: newPrice,
+      high24h: newHigh,
+      low24h: newLow,
+      change: change,
+      changePercentage: changePercentage,
+      tickDirection: direction,
+      bidPrice: bidPrice,
+      askPrice: askPrice,
+      spread: spread,
+      bidSize: bidSize,
+      askSize: askSize,
+      volume: newVolume,
+      sparkline: updatedSparkline,
+      lastUpdated: now,
+    );
+  }
+
+  void _mutateActiveCandle(InstrumentModel instrument) {
+    final cachedTimeframes = _candleCache[instrument.symbol];
+    if (cachedTimeframes == null) return;
+
+    for (final timeframe in cachedTimeframes.keys) {
+      final candles = cachedTimeframes[timeframe];
+      if (candles == null || candles.isEmpty) continue;
+
+      final lastIndex = candles.length - 1;
+      final activeCandle = candles[lastIndex];
+
+      // Mutate active candle with the latest price tick
+      candles[lastIndex] = activeCandle.copyWithTick(
+        instrument.currentPrice,
+        15.0 + _random.nextInt(40).toDouble(),
+      );
+    }
+  }
+
+  double _boxMullerGaussian() {
+    double u1 = _random.nextDouble();
+    while (u1 <= 1e-15) {
+      u1 = _random.nextDouble();
+    }
+    final double u2 = _random.nextDouble();
+    return math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2);
+  }
+
+  double _getSectorVolatility(String sector) {
+    switch (sector.toLowerCase()) {
+      case 'semiconductors':
+      case 'automotive':
+        return 0.35;
+      case 'technology':
+      case 'consumer cyclical':
+        return 0.24;
+      case 'financial services':
+      case 'healthcare':
+        return 0.16;
+      case 'energy':
+      case 'consumer staples':
+      default:
+        return 0.14;
+    }
+  }
+
+  // ===========================================================================
+  // DETERMINISTIC HISTORICAL CANDLESTICK SYNTHESIS
+  // ===========================================================================
+
+  List<CandleModel> _generateHistoricalCandles({
+    required InstrumentModel instrument,
+    required MarketTimeframe timeframe,
+  }) {
+    final candles = <CandleModel>[];
+    final count = timeframe.targetCandleCount;
+    final duration = timeframe.candleDuration;
+    final now = DateTime.now();
+
+    // Deterministic random generator for visual consistency
+    final seed = instrument.symbol.hashCode ^ timeframe.index;
+    final candleRand = math.Random(seed);
+
+    double currentPrice = instrument.previousClose > 0
+        ? instrument.previousClose
+        : instrument.currentPrice * 0.98;
+
+    final volatility = _getSectorVolatility(instrument.sector);
+    final dt = duration.inMinutes / (252.0 * 6.5 * 60.0);
+
+    for (int i = count - 1; i >= 0; i--) {
+      final candleTime = now.subtract(duration * i);
+
+      final open = currentPrice;
+
+      // Gaussian step for close
+      double u1 = candleRand.nextDouble();
+      while (u1 <= 1e-15) {
+        u1 = candleRand.nextDouble();
+      }
+      final double u2 = candleRand.nextDouble();
+      final z = math.sqrt(-2.0 * math.log(u1)) * math.cos(2.0 * math.pi * u2);
+
+      final exponent = -0.5 * volatility * volatility * dt +
+          volatility * math.sqrt(dt) * z;
+      double close = open * math.exp(exponent);
+
+      // If it's the very latest candle, anchor close to current live price
+      if (i == 0) {
+        close = instrument.currentPrice;
+      }
+
+      close = double.parse(close.toStringAsFixed(2));
+      if (close <= 0.01) close = 0.01;
+
+      // Ensure High and Low envelope Open and Close strictly
+      final upperBody = math.max(open, close);
+      final lowerBody = math.min(open, close);
+
+      final highWick = upperBody * (candleRand.nextDouble() * 0.006);
+      final lowWick = lowerBody * (candleRand.nextDouble() * 0.006);
+
+      final high = double.parse((upperBody + highWick).toStringAsFixed(2));
+      final low = double.parse(math.max(0.01, lowerBody - lowWick).toStringAsFixed(2));
+
+      // Intraday U-curve volume profile
+      final double progress = (count - i) / count.toDouble();
+      final double uShapeFactor = 4.0 * math.pow(progress - 0.5, 2);
+      final baseVolume = (instrument.avgVolume / count) * 0.6;
+      final volume = double.parse(
+        (baseVolume * (1.0 + uShapeFactor) * (0.8 + candleRand.nextDouble() * 0.4))
+            .toStringAsFixed(0),
+      );
+
+      candles.add(
+        CandleModel(
+          timestamp: candleTime,
+          open: open,
+          high: math.max(high, upperBody),
+          low: math.min(low, lowerBody),
+          close: close,
+          volume: volume,
+        ),
+      );
+
+      currentPrice = close;
+    }
+
+    return candles;
+  }
+
+  // ===========================================================================
+  // INITIAL ASSET CATALOGUE (15 Premier Institutional Equities)
+  // ===========================================================================
+
+  void _seedCatalog() {
+    _instrumentCatalog.clear();
+    final now = DateTime.now();
+
+    final seedDefinitions = [
+      _SeedDefinition(
+        symbol: 'AAPL',
+        name: 'Apple Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Technology',
+        basePrice: 232.50,
+        peRatio: 34.2,
+        eps: 6.80,
+        beta: 1.08,
+        dividendYield: 0.44,
+        marketCap: 3560000000000, // $3.56T
+        avgVolume: 48000000,
+        week52High: 237.23,
+        week52Low: 164.08,
+      ),
+      _SeedDefinition(
+        symbol: 'MSFT',
+        name: 'Microsoft Corp.',
+        exchange: 'NASDAQ',
+        sector: 'Technology',
+        basePrice: 428.00,
+        peRatio: 36.4,
+        eps: 11.75,
+        beta: 0.92,
+        dividendYield: 0.70,
+        marketCap: 3180000000000, // $3.18T
+        avgVolume: 21000000,
+        week52High: 468.35,
+        week52Low: 366.50,
+      ),
+      _SeedDefinition(
+        symbol: 'NVDA',
+        name: 'NVIDIA Corporation',
+        exchange: 'NASDAQ',
+        sector: 'Semiconductors',
+        basePrice: 138.25,
+        peRatio: 58.6,
+        eps: 2.36,
+        beta: 1.68,
+        dividendYield: 0.03,
+        marketCap: 3390000000000, // $3.39T
+        avgVolume: 56000000,
+        week52High: 140.76,
+        week52Low: 39.23,
+      ),
+      _SeedDefinition(
+        symbol: 'GOOGL',
+        name: 'Alphabet Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Technology',
+        basePrice: 164.80,
+        peRatio: 23.8,
+        eps: 6.92,
+        beta: 1.04,
+        dividendYield: 0.48,
+        marketCap: 2040000000000, // $2.04T
+        avgVolume: 24000000,
+        week52High: 191.75,
+        week52Low: 120.21,
+      ),
+      _SeedDefinition(
+        symbol: 'AMZN',
+        name: 'Amazon.com Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Consumer Cyclical',
+        basePrice: 186.40,
+        peRatio: 43.1,
+        eps: 4.32,
+        beta: 1.15,
+        dividendYield: 0.00,
+        marketCap: 1940000000000, // $1.94T
+        avgVolume: 38000000,
+        week52High: 201.20,
+        week52Low: 118.35,
+      ),
+      _SeedDefinition(
+        symbol: 'META',
+        name: 'Meta Platforms Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Technology',
+        basePrice: 582.00,
+        peRatio: 28.5,
+        eps: 20.42,
+        beta: 1.22,
+        dividendYield: 0.34,
+        marketCap: 1470000000000, // $1.47T
+        avgVolume: 14000000,
+        week52High: 602.95,
+        week52Low: 279.40,
+      ),
+      _SeedDefinition(
+        symbol: 'TSLA',
+        name: 'Tesla Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Automotive',
+        basePrice: 218.90,
+        peRatio: 62.4,
+        eps: 3.51,
+        beta: 2.30,
+        dividendYield: 0.00,
+        marketCap: 698000000000, // $698B
+        avgVolume: 72000000,
+        week52High: 271.00,
+        week52Low: 138.80,
+      ),
+      _SeedDefinition(
+        symbol: 'BRK.B',
+        name: 'Berkshire Hathaway Inc.',
+        exchange: 'NYSE',
+        sector: 'Financial Services',
+        basePrice: 452.10,
+        peRatio: 21.0,
+        eps: 21.53,
+        beta: 0.88,
+        dividendYield: 0.00,
+        marketCap: 994000000000, // $994B
+        avgVolume: 3200000,
+        week52High: 484.00,
+        week52Low: 341.20,
+      ),
+      _SeedDefinition(
+        symbol: 'JPM',
+        name: 'JPMorgan Chase & Co.',
+        exchange: 'NYSE',
+        sector: 'Financial Services',
+        basePrice: 221.40,
+        peRatio: 12.3,
+        eps: 18.00,
+        beta: 1.10,
+        dividendYield: 2.08,
+        marketCap: 632000000000, // $632B
+        avgVolume: 9400000,
+        week52High: 225.48,
+        week52Low: 140.40,
+      ),
+      _SeedDefinition(
+        symbol: 'V',
+        name: 'Visa Inc.',
+        exchange: 'NYSE',
+        sector: 'Financial Services',
+        basePrice: 280.60,
+        peRatio: 30.1,
+        eps: 9.32,
+        beta: 0.95,
+        dividendYield: 0.74,
+        marketCap: 568000000000, // $568B
+        avgVolume: 6100000,
+        week52High: 290.96,
+        week52Low: 228.00,
+      ),
+      _SeedDefinition(
+        symbol: 'LLY',
+        name: 'Eli Lilly and Company',
+        exchange: 'NYSE',
+        sector: 'Healthcare',
+        basePrice: 912.00,
+        peRatio: 114.0,
+        eps: 8.00,
+        beta: 0.65,
+        dividendYield: 0.57,
+        marketCap: 866000000000, // $866B
+        avgVolume: 3100000,
+        week52High: 972.53,
+        week52Low: 540.20,
+      ),
+      _SeedDefinition(
+        symbol: 'JNJ',
+        name: 'Johnson & Johnson',
+        exchange: 'NYSE',
+        sector: 'Healthcare',
+        basePrice: 161.30,
+        peRatio: 24.2,
+        eps: 6.66,
+        beta: 0.54,
+        dividendYield: 3.07,
+        marketCap: 388000000000, // $388B
+        avgVolume: 6800000,
+        week52High: 168.96,
+        week52Low: 143.16,
+      ),
+      _SeedDefinition(
+        symbol: 'XOM',
+        name: 'Exxon Mobil Corp.',
+        exchange: 'NYSE',
+        sector: 'Energy',
+        basePrice: 124.50,
+        peRatio: 14.6,
+        eps: 8.53,
+        beta: 0.98,
+        dividendYield: 3.05,
+        marketCap: 494000000000, // $494B
+        avgVolume: 16500000,
+        week52High: 126.34,
+        week52Low: 95.77,
+      ),
+      _SeedDefinition(
+        symbol: 'WMT',
+        name: 'Walmart Inc.',
+        exchange: 'NYSE',
+        sector: 'Consumer Staples',
+        basePrice: 80.40,
+        peRatio: 33.2,
+        eps: 2.42,
+        beta: 0.52,
+        dividendYield: 1.03,
+        marketCap: 646000000000, // $646B
+        avgVolume: 22000000,
+        week52High: 81.33,
+        week52Low: 49.85,
+      ),
+      _SeedDefinition(
+        symbol: 'MCD',
+        name: 'McDonald\'s Corp.',
+        exchange: 'NYSE',
+        sector: 'Consumer Cyclical',
+        basePrice: 298.70,
+        peRatio: 25.8,
+        eps: 11.58,
+        beta: 0.68,
+        dividendYield: 2.37,
+        marketCap: 214000000000, // $214B
+        avgVolume: 2700000,
+        week52High: 317.90,
+        week52Low: 243.53,
+      ),
+    ];
+
+    for (final def in seedDefinitions) {
+      // Calculate realistic baseline metrics
+      final previousClose = def.basePrice * (1.0 - (_random.nextDouble() * 0.02 - 0.01));
+      final roundedPreviousClose = double.parse(previousClose.toStringAsFixed(2));
+      final change = double.parse((def.basePrice - roundedPreviousClose).toStringAsFixed(2));
+      final changePercent = roundedPreviousClose > 0
+          ? double.parse(((change / roundedPreviousClose) * 100).toStringAsFixed(2))
+          : 0.0;
+
+      final spread = double.parse(math.max(0.01, def.basePrice * 0.0003).toStringAsFixed(2));
+      final bid = double.parse((def.basePrice - spread / 2).toStringAsFixed(2));
+      final ask = double.parse((def.basePrice + spread / 2).toStringAsFixed(2));
+
+      // Generate seed sparkline of 20 points
+      final sparkline = <double>[];
+      double p = roundedPreviousClose;
+      for (int s = 0; s < 20; s++) {
+        p += (def.basePrice - roundedPreviousClose) * (s / 20.0) +
+            (_random.nextDouble() * 0.4 - 0.2);
+        sparkline.add(double.parse(p.toStringAsFixed(2)));
+      }
+
+      _instrumentCatalog[def.symbol] = InstrumentModel(
+        symbol: def.symbol,
+        name: def.name,
+        exchange: def.exchange,
+        sector: def.sector,
+        currentPrice: def.basePrice,
+        openPrice: roundedPreviousClose,
+        high24h: double.parse((def.basePrice * 1.015).toStringAsFixed(2)),
+        low24h: double.parse((def.basePrice * 0.985).toStringAsFixed(2)),
+        previousClose: roundedPreviousClose,
+        change: change,
+        changePercentage: changePercent,
+        tickDirection: PriceDirection.none,
+        bidPrice: bid,
+        askPrice: ask,
+        spread: spread,
+        bidSize: 500,
+        askSize: 500,
+        volume: (def.avgVolume * 0.4).roundToDouble(),
+        avgVolume: def.avgVolume,
+        marketCap: def.marketCap,
+        peRatio: def.peRatio,
+        eps: def.eps,
+        beta: def.beta,
+        dividendYield: def.dividendYield,
+        week52High: def.week52High,
+        week52Low: def.week52Low,
+        sparkline: sparkline,
+        feedVenue: 'Simulated Exchange Feed • Real-Time',
+        lastUpdated: now,
+      );
+    }
+  }
+}
+
+class _SeedDefinition {
+  const _SeedDefinition({
+    required this.symbol,
+    required this.name,
+    required this.exchange,
+    required this.sector,
+    required this.basePrice,
+    required this.peRatio,
+    required this.eps,
+    required this.beta,
+    required this.dividendYield,
+    required this.marketCap,
+    required this.avgVolume,
+    required this.week52High,
+    required this.week52Low,
+  });
+
+  final String symbol;
+  final String name;
+  final String exchange;
+  final String sector;
+  final double basePrice;
+  final double peRatio;
+  final double eps;
+  final double beta;
+  final double dividendYield;
+  final double marketCap;
+  final double avgVolume;
+  final double week52High;
+  final double week52Low;
+}
