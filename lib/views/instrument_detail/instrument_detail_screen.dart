@@ -8,11 +8,11 @@ import '../../blocs/watchlist/watchlist_bloc.dart';
 import '../../blocs/watchlist/watchlist_state.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
-import '../../core/widgets/app_bottom_sheet.dart';
 import '../../core/widgets/app_button.dart';
-import '../../core/widgets/app_snack_bar.dart';
 import '../../models/candle_model.dart';
 import '../../models/instrument_model.dart';
+import '../../models/order_model.dart';
+import '../trading/widgets/order_ticket_bottom_sheet.dart';
 import '../watchlist/widgets/add_to_watchlist_sheet.dart';
 import 'widgets/interactive_financial_chart.dart';
 
@@ -48,78 +48,10 @@ class _InstrumentDetailScreenState extends State<InstrumentDetailScreen> {
   }
 
   void _showOrderTicket({required bool isBuy, required InstrumentModel instrument}) {
-    AppHaptics.medium();
-    final action = isBuy ? 'Buy' : 'Sell';
-    final actionColor = isBuy ? AppColors.bullGreen : AppColors.bearRed;
-
-    AppBottomSheet.show(
-      context: context,
-      title: '$action ${instrument.symbol}',
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Execution Price (Market)',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.lightTextSecondary,
-                ),
-              ),
-              Text(
-                '\$${instrument.currentPrice.toStringAsFixed(2)}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: actionColor.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: actionColor.withValues(alpha: 0.3)),
-            ),
-            child: Row(
-              children: [
-                Icon(Icons.info_outline, size: 16, color: actionColor),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'Paper trading order lifecycle engine will be fully connected in Phase 7.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: actionColor,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          AppButton(
-            text: 'Confirm Paper $action',
-            onPressed: () {
-              AppHaptics.success();
-              Navigator.pop(context);
-              AppSnackBar.showSuccess(
-                context,
-                'Simulated $action order ticket queued for ${instrument.symbol}.',
-                title: 'Order Queued',
-              );
-            },
-          ),
-        ],
-      ),
+    OrderTicketBottomSheet.show(
+      context,
+      instrument: instrument,
+      initialSide: isBuy ? OrderSide.buy : OrderSide.sell,
     );
   }
 

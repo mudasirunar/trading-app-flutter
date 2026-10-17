@@ -17,6 +17,11 @@ import 'repositories/watchlist/i_watchlist_repository.dart';
 import 'repositories/watchlist/watchlist_repository.dart';
 import 'services/storage/local_storage_service.dart';
 import 'views/auth/login_screen.dart';
+import 'blocs/trading/trading_bloc.dart';
+import 'blocs/trading/trading_event.dart';
+import 'blocs/market/market_state.dart';
+import 'repositories/trading/i_trading_repository.dart';
+import 'repositories/trading/trading_repository.dart';
 import 'views/navigation/main_navigation_hub.dart';
 
 void main() async {
@@ -27,11 +32,13 @@ void main() async {
   final authRepository = AuthRepository();
   final marketRepository = MarketRepository();
   final watchlistRepository = WatchlistRepository(storageService: storageService);
+  final tradingRepository = TradingRepository(storage: storageService);
   runApp(
     TradingApp(
       authRepository: authRepository,
       marketRepository: marketRepository,
       watchlistRepository: watchlistRepository,
+      tradingRepository: tradingRepository,
     ),
   );
 }
@@ -40,15 +47,19 @@ class TradingApp extends StatelessWidget {
   final IAuthRepository authRepository;
   final IMarketRepository marketRepository;
   final IWatchlistRepository watchlistRepository;
+  final ITradingRepository tradingRepository;
 
   TradingApp({
     super.key,
     required this.authRepository,
     IMarketRepository? marketRepository,
     IWatchlistRepository? watchlistRepository,
+    ITradingRepository? tradingRepository,
   })  : marketRepository = marketRepository ?? MarketRepository(),
         watchlistRepository = watchlistRepository ??
-            WatchlistRepository(storageService: LocalStorageService());
+            WatchlistRepository(storageService: LocalStorageService()),
+        tradingRepository = tradingRepository ??
+            TradingRepository(storage: LocalStorageService());
 
   @override
   Widget build(BuildContext context) {
@@ -57,6 +68,7 @@ class TradingApp extends StatelessWidget {
         RepositoryProvider<IAuthRepository>.value(value: authRepository),
         RepositoryProvider<IMarketRepository>.value(value: marketRepository),
         RepositoryProvider<IWatchlistRepository>.value(value: watchlistRepository),
+        RepositoryProvider<ITradingRepository>.value(value: tradingRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -73,6 +85,20 @@ class TradingApp extends StatelessWidget {
           BlocProvider<WatchlistBloc>(
             create: (_) => WatchlistBloc(repository: watchlistRepository)
               ..add(const WatchlistsLoadRequested()),
+          ),
+          BlocProvider<TradingBloc>(
+            create: (ctx) {
+              final bloc = TradingBloc(repository: tradingRepository)
+                ..add(const TradingInitialized());
+              ctx.read<MarketBloc>().stream.listen((mState) {
+                if (mState is MarketLoaded) {
+                  for (final inst in mState.instruments) {
+                    bloc.add(MarketTickEvaluated(instrument: inst));
+                  }
+                }
+              });
+              return bloc;
+            },
           ),
         ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(

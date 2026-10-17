@@ -75,6 +75,8 @@ class InstrumentModel extends Equatable {
   final DateTime lastUpdated;
 
   bool get isPositive => change >= 0;
+  double get price => currentPrice;
+  double get changePercent => changePercentage;
 
   InstrumentModel copyWith({
     String? symbol,

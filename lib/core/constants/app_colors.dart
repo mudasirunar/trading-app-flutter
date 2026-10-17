@@ -43,6 +43,8 @@ class AppColors {
   static const Color warningAmber = Color(0xFFF5A623);
   static const Color warningAmberBackground = Color(0x1AF5A623);
   static const Color accentAmber = warningAmber;
+  static const Color accentRed = bearRed;
+  static const Color accentGreen = bullGreen;
   static const Color infoCyan = Color(0xFF00B4D8);
   static const Color infoCyanBackground = Color(0x1A00B4D8);
 
