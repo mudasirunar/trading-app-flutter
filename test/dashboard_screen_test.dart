@@ -7,10 +7,13 @@ import 'package:trading_app/blocs/auth/auth_state.dart';
 import 'package:trading_app/blocs/market/market_bloc.dart';
 import 'package:trading_app/blocs/market/market_state.dart';
 import 'package:trading_app/blocs/theme/theme_cubit.dart';
+import 'package:trading_app/blocs/watchlist/watchlist_bloc.dart';
 import 'package:trading_app/models/user_model.dart';
 import 'package:trading_app/repositories/auth/auth_repository.dart';
 import 'package:trading_app/repositories/market/market_repository.dart';
+import 'package:trading_app/repositories/watchlist/watchlist_repository.dart';
 import 'package:trading_app/services/market/simulated_exchange_data_source.dart';
+import 'package:trading_app/services/storage/local_storage_service.dart';
 import 'package:trading_app/core/widgets/platform_segmented_movers_control.dart';
 import 'package:trading_app/views/dashboard/dashboard_screen.dart';
 
@@ -22,6 +25,9 @@ void main() {
     late MarketRepository marketRepository;
     late MarketBloc marketBloc;
     late ThemeCubit themeCubit;
+    late LocalStorageService storageService;
+    late WatchlistRepository watchlistRepository;
+    late WatchlistBloc watchlistBloc;
 
     setUp(() {
       SharedPreferences.setMockInitialValues({});
@@ -49,12 +55,16 @@ void main() {
       marketRepository = MarketRepository(dataSource: dataSource);
       marketBloc = MarketBloc(marketRepository: marketRepository);
       themeCubit = ThemeCubit();
+      storageService = LocalStorageService();
+      watchlistRepository = WatchlistRepository(storageService: storageService);
+      watchlistBloc = WatchlistBloc(repository: watchlistRepository);
     });
 
     tearDown(() {
       authBloc.close();
       marketBloc.close();
       themeCubit.close();
+      watchlistBloc.close();
       marketRepository.dispose();
     });
 
@@ -64,6 +74,7 @@ void main() {
           BlocProvider<AuthBloc>.value(value: authBloc),
           BlocProvider<MarketBloc>.value(value: marketBloc),
           BlocProvider<ThemeCubit>.value(value: themeCubit),
+          BlocProvider<WatchlistBloc>.value(value: watchlistBloc),
         ],
         child: MaterialApp(
           home: DashboardScreen(
@@ -185,6 +196,24 @@ void main() {
 
       expect(find.byType(PlatformSegmentedMoversControl), findsOneWidget);
       expect(find.byType(UiKitView), findsOneWidget);
+    });
+
+    testWidgets('Tapping Highlights View All button invokes onNavigateToSearch', (
+      WidgetTester tester,
+    ) async {
+      bool navigated = false;
+      await tester.pumpWidget(
+        createTestApp(
+          onNavigateToSearch: () => navigated = true,
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text('View All'), findsOneWidget);
+      await tester.tap(find.text('View All'));
+      await tester.pump();
+
+      expect(navigated, isTrue);
     });
   });
 }

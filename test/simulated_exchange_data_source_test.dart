@@ -17,9 +17,9 @@ void main() {
       dataSource.dispose();
     });
 
-    test('Initial catalog seeds 25 premier institutional assets', () async {
+    test('Initial catalog seeds 30 premier institutional assets', () async {
       final instruments = await dataSource.fetchInitialInstruments();
-      expect(instruments.length, equals(25));
+      expect(instruments.length, equals(30));
 
       final symbols = instruments.map((i) => i.symbol).toSet();
       expect(
@@ -50,6 +50,11 @@ void main() {
           'INTC',
           'DIS',
           'NKE',
+          'PG',
+          'KO',
+          'PEP',
+          'COIN',
+          'AMD',
         ]),
       );
 
@@ -94,7 +99,7 @@ void main() {
       dataSource.startStream();
 
       final ticks = await tickFuture;
-      expect(ticks.length, equals(25));
+      expect(ticks.length, equals(30));
 
       for (final tick in ticks) {
         expect(tick.currentPrice, greaterThan(0.0));

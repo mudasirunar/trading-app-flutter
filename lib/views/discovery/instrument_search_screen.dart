@@ -6,24 +6,27 @@ import '../../blocs/market/market_event.dart';
 import '../../blocs/market/market_state.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
+import '../../core/widgets/market_search_bar.dart';
 import '../../core/widgets/sparkline_chart.dart';
 import '../../models/instrument_model.dart';
 import '../instrument_detail/instrument_detail_screen.dart';
 
 /// Institutional instrument discovery screen with live debounced search and sector filtering.
 class InstrumentSearchScreen extends StatefulWidget {
-  const InstrumentSearchScreen({super.key});
+  const InstrumentSearchScreen({
+    super.key,
+    this.showAppBar = true,
+  });
+
+  final bool showAppBar;
 
   @override
   State<InstrumentSearchScreen> createState() => _InstrumentSearchScreenState();
 }
 
-class _InstrumentSearchScreenState extends State<InstrumentSearchScreen>
-    with SingleTickerProviderStateMixin {
+class _InstrumentSearchScreenState extends State<InstrumentSearchScreen> {
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchFocusNode = FocusNode();
-  late final AnimationController _clearIconAnimController;
-  late final Animation<double> _clearIconRotation;
   String? _selectedSector;
 
   static const List<String> _sectors = [
@@ -39,35 +42,9 @@ class _InstrumentSearchScreenState extends State<InstrumentSearchScreen>
   ];
 
   @override
-  void initState() {
-    super.initState();
-    _clearIconAnimController = AnimationController(
-      duration: const Duration(milliseconds: 320),
-      vsync: this,
-    );
-    _clearIconRotation = CurvedAnimation(
-      parent: _clearIconAnimController,
-      curve: Curves.easeInOutCubic,
-    );
-    _searchController.addListener(_onSearchInputChanged);
-    _searchFocusNode.addListener(_onFocusChanged);
-  }
-
-  void _onSearchInputChanged() {
-    setState(() {});
-  }
-
-  void _onFocusChanged() {
-    setState(() {});
-  }
-
-  @override
   void dispose() {
-    _searchFocusNode.removeListener(_onFocusChanged);
     _searchFocusNode.dispose();
-    _searchController.removeListener(_onSearchInputChanged);
     _searchController.dispose();
-    _clearIconAnimController.dispose();
     super.dispose();
   }
 
@@ -94,8 +71,6 @@ class _InstrumentSearchScreenState extends State<InstrumentSearchScreen>
   }
 
   void _clearSearchAndResetAll() {
-    AppHaptics.light();
-    _clearIconAnimController.forward(from: 0.0);
     _searchController.clear();
     setState(() {
       _selectedSector = null;
@@ -113,110 +88,16 @@ class _InstrumentSearchScreenState extends State<InstrumentSearchScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
     final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final cardBg = isDark ? AppColors.darkSurface : AppColors.lightSurface;
     final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
-    final isFocused = _searchFocusNode.hasFocus;
-    final activeBorderColor = isFocused ? AppColors.primaryBlue : borderColor;
-    final activeBorderWidth = isFocused ? 1.6 : 1.2;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Market Discovery',
-          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.3),
-        ),
-      ),
-      body: Column(
+    final content = Column(
         children: [
-          // Enhanced Rounded Search Input Bar with Dynamic Focus Border
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 10),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeInOut,
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: activeBorderColor,
-                  width: activeBorderWidth,
-                ),
-                boxShadow: isFocused
-                    ? [
-                        BoxShadow(
-                          color: AppColors.primaryBlue.withValues(
-                            alpha: isDark ? 0.28 : 0.14,
-                          ),
-                          blurRadius: 10,
-                          spreadRadius: 1,
-                        ),
-                      ]
-                    : (isDark
-                        ? []
-                        : [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.03),
-                              blurRadius: 10,
-                              offset: const Offset(0, 3),
-                            ),
-                          ]),
-              ),
-              child: TextField(
-                controller: _searchController,
-                focusNode: _searchFocusNode,
-                onChanged: _onSearchChanged,
-                textCapitalization: TextCapitalization.none,
-                textAlignVertical: TextAlignVertical.center,
-                style: TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: textPrimary,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Search ticker symbol, company, or sector...',
-                  hintStyle: TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
-                    color: textSecondary,
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
-                    size: 22,
-                    color: (isFocused || _searchController.text.isNotEmpty)
-                        ? AppColors.primaryBlue
-                        : textSecondary,
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? RotationTransition(
-                          turns: _clearIconRotation,
-                          child: IconButton(
-                            splashRadius: 20,
-                            tooltip: 'Clear search',
-                            icon: Container(
-                              padding: const EdgeInsets.all(4),
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: isDark
-                                    ? AppColors.darkSurfaceSecondary
-                                    : AppColors.lightSurfaceSecondary,
-                              ),
-                              child: Icon(
-                                Icons.close_rounded,
-                                size: 15,
-                                color: textSecondary,
-                              ),
-                            ),
-                            onPressed: _clearSearchAndResetAll,
-                          ),
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  enabledBorder: InputBorder.none,
-                  focusedBorder: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                ),
-              ),
-            ),
+          // Enhanced Rounded Search Input Bar with Dynamic Focus Glow
+          MarketSearchBar(
+            controller: _searchController,
+            focusNode: _searchFocusNode,
+            onChanged: _onSearchChanged,
+            onClear: _clearSearchAndResetAll,
           ),
 
           // Horizontal Sector Filter Chips
@@ -369,7 +250,22 @@ class _InstrumentSearchScreenState extends State<InstrumentSearchScreen>
             ),
           ),
         ],
+      );
+
+    if (!widget.showAppBar) {
+      return content;
+    }
+
+    return Scaffold(
+      appBar: AppBar(
+        centerTitle: false,
+        titleSpacing: 16,
+        title: const Text(
+          'Market Discovery',
+          style: TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.3),
+        ),
       ),
+      body: content,
     );
   }
 }

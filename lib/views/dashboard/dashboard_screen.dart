@@ -6,6 +6,8 @@ import '../../blocs/auth/auth_state.dart';
 import '../../blocs/market/market_bloc.dart';
 import '../../blocs/market/market_event.dart';
 import '../../blocs/market/market_state.dart';
+import '../../blocs/watchlist/watchlist_bloc.dart';
+import '../../blocs/watchlist/watchlist_state.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_dialog.dart';
@@ -168,59 +170,76 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 24),
 
                 // 3. Watchlist Highlights Header & Carousel
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Watchlist Highlights',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800,
-                        color: textPrimary,
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        AppHaptics.light();
-                        if (widget.onNavigateToSearch != null) {
-                          widget.onNavigateToSearch!();
-                        }
-                      },
-                      child: const Text(
-                        'View All',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primaryBlue,
+                BlocBuilder<WatchlistBloc, WatchlistState>(
+                  builder: (context, watchlistState) {
+                    final activeList = watchlistState is WatchlistsLoaded
+                        ? watchlistState.activeWatchlist
+                        : null;
+                    final watchedSymbols = activeList?.symbols ?? const <String>[];
+                    final highlightedInstruments = watchedSymbols.isNotEmpty
+                        ? watchedSymbols
+                            .map((sym) => instruments.where((i) => i.symbol.toUpperCase() == sym.toUpperCase()).firstOrNull)
+                            .whereType<InstrumentModel>()
+                            .toList()
+                        : instruments.take(8).toList();
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              activeList != null ? '${activeList.name} Highlights' : 'Watchlist Highlights',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: textPrimary,
+                                letterSpacing: -0.2,
+                              ),
+                            ),
+                            InkWell(
+                              onTap: () {
+                                AppHaptics.light();
+                                if (widget.onNavigateToSearch != null) {
+                                  widget.onNavigateToSearch!();
+                                }
+                              },
+                              child: const Text(
+                                'View All',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primaryBlue,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ),
-                    ),
-                  ],
+                        const SizedBox(height: 12),
+                        if (instruments.isEmpty)
+                          Container(
+                            height: 110,
+                            alignment: Alignment.center,
+                            child: const CircularProgressIndicator.adaptive(),
+                          )
+                        else
+                          SizedBox(
+                            height: 125,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: highlightedInstruments.length,
+                              separatorBuilder: (_, _) => const SizedBox(width: 12),
+                              itemBuilder: (context, index) {
+                                final item = highlightedInstruments[index];
+                                return _WatchlistHighlightCard(instrument: item);
+                              },
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
-
-                const SizedBox(height: 12),
-
-                // Carousel of Cards with Live Mini Sparklines
-                if (instruments.isEmpty)
-                  Container(
-                    height: 110,
-                    alignment: Alignment.center,
-                    child: const CircularProgressIndicator.adaptive(),
-                  )
-                else
-                  SizedBox(
-                    height: 125,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: instruments.take(8).length,
-                      separatorBuilder: (_, _) => const SizedBox(width: 12),
-                      itemBuilder: (context, index) {
-                        final item = instruments[index];
-                        return _WatchlistHighlightCard(instrument: item);
-                      },
-                    ),
-                  ),
 
                 const SizedBox(height: 26),
 

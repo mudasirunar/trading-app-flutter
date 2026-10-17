@@ -14,7 +14,7 @@ import '../../core/widgets/app_dialog.dart';
 import '../../core/widgets/platform_bottom_bar.dart';
 import '../../core/widgets/status_badge.dart';
 import '../dashboard/dashboard_screen.dart';
-import '../discovery/instrument_search_screen.dart';
+import '../watchlist/watchlist_screen.dart';
 
 /// Primary authenticated application navigation hub.
 /// Hosts [PlatformBottomBar] and switches between Dashboard, Markets, Portfolio, and Settings.
@@ -27,12 +27,23 @@ class MainNavigationHub extends StatefulWidget {
 
 class _MainNavigationHubState extends State<MainNavigationHub> {
   int _currentIndex = 0;
+  int _watchlistSegment = 0;
+  final GlobalKey<WatchlistScreenState> _watchlistKey = GlobalKey<WatchlistScreenState>();
 
   @override
   void initState() {
     super.initState();
     // Start market ticker feed upon entering the authenticated terminal
     context.read<MarketBloc>().add(const MarketStarted());
+  }
+
+  void _navigateToAllMarkets() {
+    AppHaptics.selection();
+    setState(() {
+      _currentIndex = 1;
+      _watchlistSegment = 1;
+    });
+    _watchlistKey.currentState?.selectSegment(1);
   }
 
   @override
@@ -44,12 +55,15 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
         index: _currentIndex,
         children: [
           DashboardScreen(
+            onNavigateToSearch: _navigateToAllMarkets,
+          ),
+          WatchlistScreen(
+            key: _watchlistKey,
+            initialSegment: _watchlistSegment,
             onNavigateToSearch: () {
-              AppHaptics.selection();
-              setState(() => _currentIndex = 1);
+              _watchlistKey.currentState?.selectSegment(1);
             },
           ),
-          const InstrumentSearchScreen(),
           const _PlaceholderTab(
             title: 'Portfolio & Positions',
             subtitle:

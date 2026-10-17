@@ -4,12 +4,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../blocs/market/market_bloc.dart';
 import '../../blocs/market/market_event.dart';
 import '../../blocs/market/market_state.dart';
+import '../../blocs/watchlist/watchlist_bloc.dart';
+import '../../blocs/watchlist/watchlist_state.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_bottom_sheet.dart';
 import '../../core/widgets/app_button.dart';
 import '../../models/candle_model.dart';
 import '../../models/instrument_model.dart';
+import '../watchlist/widgets/add_to_watchlist_sheet.dart';
 import 'widgets/interactive_financial_chart.dart';
 
 /// Institutional-grade Instrument Detail Screen featuring live candlestick/line charts,
@@ -30,7 +33,6 @@ class InstrumentDetailScreen extends StatefulWidget {
 
 class _InstrumentDetailScreenState extends State<InstrumentDetailScreen> {
   CandleModel? _scrubbedCandle;
-  bool _isWatchlisted = false;
 
   @override
   void initState() {
@@ -136,15 +138,55 @@ class _InstrumentDetailScreenState extends State<InstrumentDetailScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.3),
         ),
         actions: [
-          IconButton(
-            icon: Icon(
-              _isWatchlisted ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
-              color: _isWatchlisted ? AppColors.primaryBlue : textSecondary,
-            ),
-            tooltip: 'Watchlist',
-            onPressed: () {
-              AppHaptics.light();
-              setState(() => _isWatchlisted = !_isWatchlisted);
+          BlocBuilder<WatchlistBloc, WatchlistState>(
+            builder: (context, watchlistState) {
+              final isSaved = watchlistState is WatchlistsLoaded &&
+                  watchlistState.isSymbolInAnyWatchlist(widget.symbol);
+
+              return IconButton(
+                icon: Icon(
+                  isSaved ? Icons.bookmark_rounded : Icons.bookmark_border_rounded,
+                  color: isSaved ? AppColors.primaryBlue : textSecondary,
+                ),
+                tooltip: 'Save to Watchlist',
+                onPressed: () {
+                  AppHaptics.light();
+                  final currentInstrument = widget.initialInstrument ??
+                      InstrumentModel(
+                        symbol: widget.symbol,
+                        name: widget.symbol,
+                        exchange: 'US',
+                        sector: 'Equities',
+                        currentPrice: 100.0,
+                        openPrice: 100.0,
+                        high24h: 105.0,
+                        low24h: 95.0,
+                        previousClose: 100.0,
+                        change: 0.0,
+                        changePercentage: 0.0,
+                        bidPrice: 99.9,
+                        askPrice: 100.1,
+                        spread: 0.2,
+                        bidSize: 100,
+                        askSize: 100,
+                        volume: 1000000,
+                        avgVolume: 1000000,
+                        marketCap: 10000000000,
+                        peRatio: 20.0,
+                        eps: 5.0,
+                        beta: 1.0,
+                        dividendYield: 0.0,
+                        week52High: 120.0,
+                        week52Low: 80.0,
+                        sparkline: const [100.0, 100.0, 100.0],
+                        lastUpdated: DateTime.now(),
+                      );
+                  AddToWatchlistSheet.show(
+                    context: context,
+                    instrument: currentInstrument,
+                  );
+                },
+              );
             },
           ),
         ],

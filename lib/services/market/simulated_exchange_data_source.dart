@@ -710,6 +710,81 @@ class SimulatedExchangeDataSource implements IMarketDataSource {
         week52High: 123.39,
         week52Low: 70.75,
       ),
+      _SeedDefinition(
+        symbol: 'PG',
+        name: 'Procter & Gamble Co.',
+        exchange: 'NYSE',
+        sector: 'Consumer Staples',
+        basePrice: 168.50,
+        peRatio: 26.4,
+        eps: 6.59,
+        beta: 0.58,
+        dividendYield: 2.38,
+        marketCap: 395000000000, // $395B
+        avgVolume: 6500000,
+        week52High: 177.94,
+        week52Low: 143.22,
+      ),
+      _SeedDefinition(
+        symbol: 'KO',
+        name: 'The Coca-Cola Company',
+        exchange: 'NYSE',
+        sector: 'Consumer Staples',
+        basePrice: 68.20,
+        peRatio: 27.1,
+        eps: 2.68,
+        beta: 0.55,
+        dividendYield: 2.85,
+        marketCap: 294000000000, // $294B
+        avgVolume: 13200000,
+        week52High: 73.53,
+        week52Low: 51.55,
+      ),
+      _SeedDefinition(
+        symbol: 'PEP',
+        name: 'PepsiCo, Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Consumer Staples',
+        basePrice: 172.40,
+        peRatio: 25.8,
+        eps: 7.20,
+        beta: 0.54,
+        dividendYield: 3.12,
+        marketCap: 236000000000, // $236B
+        avgVolume: 5100000,
+        week52High: 183.25,
+        week52Low: 155.83,
+      ),
+      _SeedDefinition(
+        symbol: 'COIN',
+        name: 'Coinbase Global, Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Financial Services',
+        basePrice: 215.30,
+        peRatio: 42.0,
+        eps: 5.12,
+        beta: 2.85,
+        dividendYield: 0.00,
+        marketCap: 53000000000, // $53B
+        avgVolume: 11500000,
+        week52High: 283.48,
+        week52Low: 70.12,
+      ),
+      _SeedDefinition(
+        symbol: 'AMD',
+        name: 'Advanced Micro Devices, Inc.',
+        exchange: 'NASDAQ',
+        sector: 'Semiconductors',
+        basePrice: 156.20,
+        peRatio: 118.0,
+        eps: 1.32,
+        beta: 1.72,
+        dividendYield: 0.00,
+        marketCap: 252000000000, // $252B
+        avgVolume: 44000000,
+        week52High: 227.30,
+        week52Low: 94.04,
+      ),
     ];
 
     // Realistic market day distribution (healthy mix of gainers and losers)
@@ -739,6 +814,11 @@ class SimulatedExchangeDataSource implements IMarketDataSource {
       'INTC': -1.85,
       'DIS': -0.92,
       'NKE': -1.35,
+      'PG': 0.42,
+      'KO': 0.65,
+      'PEP': -0.38,
+      'COIN': 4.15,
+      'AMD': 2.30,
     };
 
     for (final def in seedDefinitions) {
