@@ -20,6 +20,11 @@ import UIKit
       registrar.register(factory, withId: "trading_app/native-segmented-control")
     }
 
+    if let registrar = self.registrar(forPlugin: "NativeWatchlistTabsPlugin") {
+      let factory = NativeWatchlistTabsFactory(messenger: registrar.messenger())
+      registrar.register(factory, withId: "trading_app/native-watchlist-tabs")
+    }
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

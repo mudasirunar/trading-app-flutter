@@ -1,6 +1,37 @@
 import Flutter
 import UIKit
 
+/// Subclass that reports touch tracking / dragging state for NativeSegmentedControl
+final class TrackingMoversSegmentedControl: UISegmentedControl {
+    var onTrackingChanged: ((Bool) -> Void)?
+
+    override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        let result = super.beginTracking(touch, with: event)
+        if result {
+            onTrackingChanged?(true)
+        }
+        return result
+    }
+
+    override func continueTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
+        let result = super.continueTracking(touch, with: event)
+        if result {
+            onTrackingChanged?(true)
+        }
+        return result
+    }
+
+    override func endTracking(_ touch: UITouch?, with event: UIEvent?) {
+        super.endTracking(touch, with: event)
+        onTrackingChanged?(false)
+    }
+
+    override func cancelTracking(with event: UIEvent?) {
+        super.cancelTracking(with: event)
+        onTrackingChanged?(false)
+    }
+}
+
 /// Factory that Flutter calls to instantiate the native iOS segmented control
 class NativeSegmentedControlFactory: NSObject, FlutterPlatformViewFactory {
     private let messenger: FlutterBinaryMessenger
@@ -22,9 +53,10 @@ class NativeSegmentedControlFactory: NSObject, FlutterPlatformViewFactory {
 /// 100% Native iOS UISegmentedControl Platform View with Icons + High-Contrast Typography
 final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
     private let container = UIView()
-    private let segmentedControl = UISegmentedControl()
+    private let segmentedControl = TrackingMoversSegmentedControl()
     private let channel: FlutterMethodChannel
     private var isDarkMode: Bool = false
+    private var isPillRaised: Bool = false
 
     private struct TabSpec {
         let title: String
@@ -78,6 +110,11 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
         updateSelectedColor(for: segmentedControl.selectedSegmentIndex)
         updateSegmentImages()
 
+        segmentedControl.onTrackingChanged = { [weak self] isTracking in
+            self?.handleTrackingChanged(isTracking)
+        }
+        segmentedControl.addTarget(self, action: #selector(touchDown(_:)), for: .touchDown)
+        segmentedControl.addTarget(self, action: #selector(touchUp(_:)), for: [.touchUpInside, .touchUpOutside, .touchCancel])
         segmentedControl.addTarget(self, action: #selector(segmentChanged(_:)), for: .valueChanged)
         container.addSubview(segmentedControl)
 
@@ -88,6 +125,7 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
                 if idx >= 0 && idx < self.tabs.count {
                     self.segmentedControl.selectedSegmentIndex = idx
                     self.updateSelectedColor(for: idx)
+                    self.isPillRaised = false
                     self.updateSegmentImages()
                 }
                 result(nil)
@@ -101,6 +139,22 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
                 result(FlutterMethodNotImplemented)
             }
         }
+    }
+
+    private func handleTrackingChanged(_ isTracking: Bool) {
+        guard !isDarkMode else { return }
+        if isPillRaised != isTracking {
+            isPillRaised = isTracking
+            updateSegmentImages()
+        }
+    }
+
+    @objc private func touchDown(_ sender: UISegmentedControl) {
+        handleTrackingChanged(true)
+    }
+
+    @objc private func touchUp(_ sender: UISegmentedControl) {
+        handleTrackingChanged(false)
     }
 
     private func applyThemeStyle() {
@@ -117,15 +171,28 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
     }
 
     private func updateSegmentImages() {
-        // Deep solid Slate 900 (#0F172A) for Light Mode to guarantee 100% visible, bold text
-        // Crisp Slate 200 (#E2E8F0) for Dark Mode
+        let blackColor = UIColor(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0, alpha: 1.0)
         let unselectedColor = isDarkMode
             ? UIColor(red: 226.0 / 255.0, green: 232.0 / 255.0, blue: 240.0 / 255.0, alpha: 0.95)
-            : UIColor(red: 15.0 / 255.0, green: 23.0 / 255.0, blue: 42.0 / 255.0, alpha: 1.0)
+            : blackColor
 
         for i in 0..<tabs.count {
-            let isSelected = (i == segmentedControl.selectedSegmentIndex)
-            let color = isSelected ? UIColor.white : unselectedColor
+            let color: UIColor
+            if isDarkMode {
+                let isSelected = (i == segmentedControl.selectedSegmentIndex)
+                color = isSelected ? UIColor.white : unselectedColor
+            } else {
+                // Light mode:
+                // When pill is raised (dragged/held): ALL tabs turn black (both icon and text).
+                // Only once placed / put at rest does the active tab turn white!
+                if isPillRaised {
+                    color = blackColor
+                } else {
+                    let isSelected = (i == segmentedControl.selectedSegmentIndex)
+                    color = isSelected ? UIColor.white : blackColor
+                }
+            }
+
             let img = createSegmentImage(
                 iconName: tabs[i].iconName,
                 title: tabs[i].title,
@@ -168,12 +235,10 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
                 path.lineWidth = 1.6
                 path.lineCapStyle = .round
                 path.lineJoinStyle = .round
-                // Zigzag path
                 path.move(to: CGPoint(x: iconRect.minX + 1.0, y: iconRect.minY + 9.5))
                 path.addLine(to: CGPoint(x: iconRect.minX + 4.8, y: iconRect.minY + 5.8))
                 path.addLine(to: CGPoint(x: iconRect.minX + 7.8, y: iconRect.minY + 8.2))
                 path.addLine(to: CGPoint(x: iconRect.minX + 12.0, y: iconRect.minY + 2.5))
-                // Arrowhead
                 path.move(to: CGPoint(x: iconRect.minX + 8.0, y: iconRect.minY + 2.5))
                 path.addLine(to: CGPoint(x: iconRect.minX + 12.0, y: iconRect.minY + 2.5))
                 path.addLine(to: CGPoint(x: iconRect.minX + 12.0, y: iconRect.minY + 6.5))
@@ -185,12 +250,10 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
                 path.lineWidth = 1.6
                 path.lineCapStyle = .round
                 path.lineJoinStyle = .round
-                // Zigzag path
                 path.move(to: CGPoint(x: iconRect.minX + 1.0, y: iconRect.minY + 2.5))
                 path.addLine(to: CGPoint(x: iconRect.minX + 4.8, y: iconRect.minY + 6.2))
                 path.addLine(to: CGPoint(x: iconRect.minX + 7.8, y: iconRect.minY + 3.8))
                 path.addLine(to: CGPoint(x: iconRect.minX + 12.0, y: iconRect.minY + 9.5))
-                // Arrowhead
                 path.move(to: CGPoint(x: iconRect.minX + 8.0, y: iconRect.minY + 9.5))
                 path.addLine(to: CGPoint(x: iconRect.minX + 12.0, y: iconRect.minY + 9.5))
                 path.addLine(to: CGPoint(x: iconRect.minX + 12.0, y: iconRect.minY + 5.5))
@@ -215,6 +278,9 @@ final class NativeSegmentedControlPlatformView: NSObject, FlutterPlatformView {
     @objc private func segmentChanged(_ sender: UISegmentedControl) {
         let index = sender.selectedSegmentIndex
         updateSelectedColor(for: index)
+        if !sender.isTracking {
+            isPillRaised = false
+        }
         updateSegmentImages()
         channel.invokeMethod("onTabSelected", arguments: ["index": index])
     }

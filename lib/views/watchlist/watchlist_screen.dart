@@ -10,6 +10,7 @@ import '../../core/utils/app_haptics.dart';
 import '../../core/utils/instrument_search_helper.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/market_search_bar.dart';
+import '../../core/widgets/platform_watchlist_tabs_control.dart';
 import '../../models/instrument_model.dart';
 import '../discovery/instrument_search_screen.dart';
 import 'widgets/create_watchlist_dialog.dart';
@@ -213,118 +214,17 @@ class WatchlistScreenState extends State<WatchlistScreen> {
           body: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // 0. Top Segmented Switch: Watchlists vs All Markets
+              // 0. Top Segmented Switch: Watchlists vs All Markets (Native iOS / Liquid Glass Android)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-                child: Container(
-                  height: 38,
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurfaceSecondary : AppColors.lightSurfaceSecondary,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: borderColor),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(9),
-                          onTap: () {
-                            if (_selectedSegment != 0) {
-                              AppHaptics.selection();
-                              setState(() => _selectedSegment = 0);
-                            }
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            decoration: BoxDecoration(
-                              color: _selectedSegment == 0
-                                  ? (isDark ? AppColors.darkSurface : AppColors.lightSurface)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(9),
-                              boxShadow: _selectedSegment == 0
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.12),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.star_rounded,
-                                  size: 15,
-                                  color: _selectedSegment == 0 ? AppColors.primaryBlue : textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'My Watchlists',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: _selectedSegment == 0 ? FontWeight.w700 : FontWeight.w600,
-                                    color: _selectedSegment == 0 ? textPrimary : textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(9),
-                          onTap: () {
-                            if (_selectedSegment != 1) {
-                              AppHaptics.selection();
-                              setState(() => _selectedSegment = 1);
-                            }
-                          },
-                          child: AnimatedContainer(
-                            duration: const Duration(milliseconds: 180),
-                            decoration: BoxDecoration(
-                              color: _selectedSegment == 1
-                                  ? (isDark ? AppColors.darkSurface : AppColors.lightSurface)
-                                  : Colors.transparent,
-                              borderRadius: BorderRadius.circular(9),
-                              boxShadow: _selectedSegment == 1
-                                  ? [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(alpha: 0.12),
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 1),
-                                      ),
-                                    ]
-                                  : null,
-                            ),
-                            alignment: Alignment.center,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.public_rounded,
-                                  size: 15,
-                                  color: _selectedSegment == 1 ? AppColors.primaryBlue : textSecondary,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'All Markets',
-                                  style: TextStyle(
-                                    fontSize: 12.5,
-                                    fontWeight: _selectedSegment == 1 ? FontWeight.w700 : FontWeight.w600,
-                                    color: _selectedSegment == 1 ? textPrimary : textSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: PlatformWatchlistTabsControl(
+                  selectedIndex: _selectedSegment,
+                  onTabSelected: (index) {
+                    if (_selectedSegment != index) {
+                      AppHaptics.selection();
+                      setState(() => _selectedSegment = index);
+                    }
+                  },
                 ),
               ),
 
