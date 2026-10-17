@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:trading_app/core/widgets/platform_alerts_tabs_control.dart';
 import 'package:trading_app/core/widgets/platform_watchlist_tabs_control.dart';
 
 void main() {
@@ -128,6 +129,72 @@ void main() {
 
       expect(find.byType(PlatformWatchlistTabsControl), findsOneWidget);
       expect(find.byType(UiKitView), findsOneWidget);
+    });
+
+    testWidgets('PlatformSegmentedTabsControl renders text-only tabs with no icons', (tester) async {
+      int selected = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => PlatformSegmentedTabsControl(
+                selectedIndex: selected,
+                tabs: const [
+                  SegmentTabData(label: 'Active (2)'),
+                  SegmentTabData(label: 'Triggered (5)'),
+                ],
+                onTabSelected: (index) {
+                  setState(() => selected = index);
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('Active (2)'), findsOneWidget);
+      expect(find.text('Triggered (5)'), findsOneWidget);
+      // Confirms strictly no icons rendered for Alerts
+      expect(find.byType(Icon), findsNothing);
+
+      await tester.tap(find.text('Triggered (5)'));
+      await tester.pumpAndSettle();
+      expect(selected, 1);
+    });
+
+    testWidgets('PlatformAlertsTabsControl renders screen-level alerts tabs with no icons', (tester) async {
+      int selected = 0;
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData.dark(),
+          home: Scaffold(
+            body: StatefulBuilder(
+              builder: (context, setState) => PlatformAlertsTabsControl(
+                selectedIndex: selected,
+                activeCount: 3,
+                triggeredCount: 7,
+                onTabSelected: (index) {
+                  setState(() => selected = index);
+                },
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(PlatformAlertsTabsControl), findsOneWidget);
+      expect(find.text('Active (3)'), findsOneWidget);
+      expect(find.text('Triggered (7)'), findsOneWidget);
+      expect(find.byType(Icon), findsNothing);
+
+      await tester.tap(find.text('Triggered (7)'));
+      await tester.pumpAndSettle();
+      expect(selected, 1);
     });
   });
 }

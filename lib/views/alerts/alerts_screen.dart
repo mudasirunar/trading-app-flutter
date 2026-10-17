@@ -7,6 +7,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/constants/app_styles.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_snack_bar.dart';
+import '../../core/widgets/platform_alerts_tabs_control.dart';
 import '../instrument_detail/instrument_detail_screen.dart';
 import 'widgets/alert_card.dart';
 
@@ -28,9 +29,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
         isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
     final textSecondary =
         isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-    final surfaceColor =
-        isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    final borderColor = isDark ? AppColors.darkBorder : AppColors.lightBorder;
 
     return Scaffold(
       appBar: AppBar(
@@ -90,33 +88,22 @@ class _AlertsScreenState extends State<AlertsScreen> {
 
           return Column(
             children: [
-              // Segmented Tab Bar
+              // Platform-Adaptive Segmented Control (Native iOS / Liquid Glass Android)
               Padding(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    color: surfaceColor,
-                    borderRadius: BorderRadius.circular(AppStyles.radius12),
-                    border: Border.all(color: borderColor),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildTabItem(
-                        index: 0,
-                        label: 'Active (${activeList.length})',
-                        isSelected: _selectedTab == 0,
-                      ),
-                      _buildTabItem(
-                        index: 1,
-                        label: 'Triggered (${triggeredList.length})',
-                        isSelected: _selectedTab == 1,
-                      ),
-                    ],
-                  ),
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: PlatformAlertsTabsControl(
+                  selectedIndex: _selectedTab,
+                  activeCount: activeList.length,
+                  triggeredCount: triggeredList.length,
+                  onTabSelected: (index) {
+                    if (_selectedTab != index) {
+                      AppHaptics.selection();
+                      setState(() => _selectedTab = index);
+                    }
+                  },
                 ),
               ),
+              const SizedBox(height: 12),
 
               // Tab Content
               Expanded(
@@ -135,45 +122,6 @@ class _AlertsScreenState extends State<AlertsScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildTabItem({
-    required int index,
-    required String label,
-    required bool isSelected,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Expanded(
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () {
-          AppHaptics.selection();
-          setState(() => _selectedTab = index);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          decoration: BoxDecoration(
-            color: isSelected ? AppColors.primaryBlue : Colors.transparent,
-            borderRadius: BorderRadius.circular(AppStyles.radius8),
-          ),
-          alignment: Alignment.center,
-          child: Text(
-            label,
-            style: AppStyles.caption.copyWith(
-              color: isSelected
-                  ? Colors.white
-                  : (isDark
-                      ? AppColors.darkTextSecondary
-                      : AppColors.lightTextSecondary),
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-              fontSize: 12,
-            ),
-          ),
-        ),
       ),
     );
   }
