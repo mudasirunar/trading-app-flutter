@@ -14,6 +14,7 @@ import '../../core/widgets/app_dialog.dart';
 import '../../core/widgets/platform_bottom_bar.dart';
 import '../../core/widgets/status_badge.dart';
 import '../dashboard/dashboard_screen.dart';
+import '../portfolio/portfolio_screen.dart';
 import '../watchlist/watchlist_screen.dart';
 
 /// Primary authenticated application navigation hub.
@@ -64,11 +65,8 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
               _watchlistKey.currentState?.selectSegment(1);
             },
           ),
-          const _PlaceholderTab(
-            title: 'Portfolio & Positions',
-            subtitle:
-                'Virtual portfolio holdings, paper execution ledger, and P&L analytics will connect in Phase 8.',
-            icon: Icons.work_outline_rounded,
+          PortfolioScreen(
+            onExploreMarkets: _navigateToAllMarkets,
           ),
           const _SettingsTab(),
         ],
@@ -84,67 +82,6 @@ class _MainNavigationHubState extends State<MainNavigationHub> {
   }
 }
 
-class _PlaceholderTab extends StatelessWidget {
-  const _PlaceholderTab({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-  });
-
-  final String title;
-  final String subtitle;
-  final IconData icon;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
-    final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.3),
-        ),
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 72,
-                height: 72,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: AppColors.primaryBlue.withValues(alpha: 0.1),
-                ),
-                child: Icon(icon, size: 36, color: AppColors.primaryBlue),
-              ),
-              const SizedBox(height: 20),
-              Text(
-                title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  color: textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                subtitle,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: textSecondary, height: 1.4),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
 
 class _SettingsTab extends StatelessWidget {
   const _SettingsTab();
