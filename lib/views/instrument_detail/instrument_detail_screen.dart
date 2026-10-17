@@ -10,6 +10,7 @@ import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_bottom_sheet.dart';
 import '../../core/widgets/app_button.dart';
+import '../../core/widgets/app_snack_bar.dart';
 import '../../models/candle_model.dart';
 import '../../models/instrument_model.dart';
 import '../watchlist/widgets/add_to_watchlist_sheet.dart';
@@ -110,11 +111,10 @@ class _InstrumentDetailScreenState extends State<InstrumentDetailScreen> {
             onPressed: () {
               AppHaptics.success();
               Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text('Simulated $action order ticket queued for ${instrument.symbol}.'),
-                  duration: const Duration(seconds: 2),
-                ),
+              AppSnackBar.showSuccess(
+                context,
+                'Simulated $action order ticket queued for ${instrument.symbol}.',
+                title: 'Order Queued',
               );
             },
           ),

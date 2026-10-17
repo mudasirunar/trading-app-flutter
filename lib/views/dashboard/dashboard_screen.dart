@@ -11,6 +11,7 @@ import '../../blocs/watchlist/watchlist_state.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_dialog.dart';
+import '../../core/widgets/app_snack_bar.dart';
 import '../../core/widgets/sparkline_chart.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../core/widgets/platform_segmented_movers_control.dart';
@@ -156,11 +157,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       label: 'Alerts',
                       onTap: () {
                         AppHaptics.light();
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Price Alerts module will connect in Phase 9.'),
-                            duration: Duration(seconds: 2),
-                          ),
+                        AppSnackBar.showInfo(
+                          context,
+                          'Price Alerts module will connect in Phase 9.',
+                          title: 'Price Alerts',
                         );
                       },
                     ),
