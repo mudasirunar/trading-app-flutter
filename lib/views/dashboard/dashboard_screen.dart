@@ -6,6 +6,8 @@ import '../../blocs/auth/auth_state.dart';
 import '../../blocs/market/market_bloc.dart';
 import '../../blocs/market/market_event.dart';
 import '../../blocs/market/market_state.dart';
+import '../../blocs/trading/trading_bloc.dart';
+import '../../blocs/trading/trading_state.dart';
 import '../../blocs/watchlist/watchlist_bloc.dart';
 import '../../blocs/watchlist/watchlist_state.dart';
 import '../../core/constants/app_colors.dart';
@@ -46,12 +48,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   void _showDepositDialog() {
     AppHaptics.light();
+    double currentCash = 100000.0;
+    try {
+      final tradingState = context.read<TradingBloc>().state;
+      if (tradingState is TradingLoaded) {
+        currentCash = tradingState.virtualCash;
+      }
+    } catch (_) {}
+
     AppDialog.show(
       context: context,
       type: AppDialogType.success,
       title: 'Virtual Capital Active',
       message:
-          'Your account is funded with \$100,000.00 USD virtual capital in the institutional sandbox. No additional deposit is required.',
+          'Your account has \$${currentCash.toStringAsFixed(2)} USD in available virtual capital in the institutional sandbox. No additional deposit is required.',
       primaryButtonText: 'Understood',
       onPrimaryPressed: () {},
     );
@@ -456,21 +466,35 @@ class _PortfolioSummaryCard extends StatelessWidget {
     final textPrimary = isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary;
     final textSecondary = isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary;
 
-    // Dynamically calculate composite market performance across live feed
-    final double avgChangePct;
-    if (instruments.isNotEmpty) {
-      final total = instruments.fold<double>(
-        0.0,
-        (acc, item) => acc + item.changePercentage,
-      );
-      avgChangePct = total / instruments.length;
-    } else {
-      avgChangePct = 0.0;
+    // Read real trading state from TradingBloc if available
+    TradingState? tradingState;
+    try {
+      tradingState = context.watch<TradingBloc>().state;
+    } catch (_) {
+      tradingState = null;
     }
 
-    final dayDollar = 100000.0 * (avgChangePct / 100.0);
-    final portfolioValue = 100000.0 + dayDollar;
-    final isPositive = dayDollar >= 0;
+    final double portfolioValue;
+    final double virtualCash;
+    final double unrealizedPL;
+    final double unrealizedPLPercent;
+    final int holdingsCount;
+
+    if (tradingState is TradingLoaded) {
+      portfolioValue = tradingState.totalPortfolioValue;
+      virtualCash = tradingState.virtualCash;
+      unrealizedPL = tradingState.overallUnrealizedPL;
+      unrealizedPLPercent = tradingState.overallUnrealizedPLPercent;
+      holdingsCount = tradingState.holdings.length;
+    } else {
+      portfolioValue = 100000.0;
+      virtualCash = 100000.0;
+      unrealizedPL = 0.0;
+      unrealizedPLPercent = 0.0;
+      holdingsCount = 0;
+    }
+
+    final isPositive = unrealizedPL >= 0;
     final trendColor = isPositive ? AppColors.bullGreen : AppColors.bearRed;
 
     // Helper for formatting with thousand commas
@@ -485,26 +509,47 @@ class _PortfolioSummaryCard extends StatelessWidget {
 
     final formattedValue = formatCurrency(portfolioValue);
     final sign = isPositive ? '+' : '-';
-    final formattedDollar = '\$${dayDollar.abs().toStringAsFixed(2)}';
-    final formattedPct = '${avgChangePct.abs().toStringAsFixed(2)}%';
-    final returnText = '$sign$formattedDollar ($sign$formattedPct) Today';
+    final formattedDollar = '\$${unrealizedPL.abs().toStringAsFixed(2)}';
+    final formattedPct = '${unrealizedPLPercent.abs().toStringAsFixed(2)}%';
+    final returnText = holdingsCount > 0
+        ? '$sign$formattedDollar ($sign$formattedPct) P&L'
+        : '+\$0.00 (+0.00%) All-Time';
 
-    // Compute composite sparkline from catalog
+    String formatCashBadge(double cash) {
+      if (cash >= 100000) {
+        return 'Cash: \$${(cash / 1000).toStringAsFixed(0)}k';
+      } else if (cash >= 1000) {
+        return 'Cash: \$${(cash / 1000).toStringAsFixed(1)}k';
+      } else {
+        return 'Cash: \$${cash.toStringAsFixed(2)}';
+      }
+    }
+
+    // Compute composite sparkline from owned instruments, or flat baseline for cash
     List<double> sparklineData = const [];
-    if (instruments.isNotEmpty) {
-      final sample = instruments.first.sparkline;
-      if (sample.isNotEmpty) {
-        final len = sample.length;
-        final aggregated = List<double>.filled(len, 0.0);
-        for (final inst in instruments) {
-          if (inst.sparkline.length == len) {
-            for (var i = 0; i < len; i++) {
-              aggregated[i] += inst.sparkline[i];
+    if (tradingState is TradingLoaded && tradingState.holdings.isNotEmpty) {
+      final ownedSymbols = tradingState.holdings.map((h) => h.symbol.toUpperCase()).toSet();
+      final ownedInstruments = instruments
+          .where((i) => ownedSymbols.contains(i.symbol.toUpperCase()))
+          .toList();
+      if (ownedInstruments.isNotEmpty) {
+        final sample = ownedInstruments.first.sparkline;
+        if (sample.isNotEmpty) {
+          final len = sample.length;
+          final aggregated = List<double>.filled(len, 0.0);
+          for (final inst in ownedInstruments) {
+            final weight = tradingState.getHolding(inst.symbol)?.quantity ?? 1.0;
+            if (inst.sparkline.length == len) {
+              for (var i = 0; i < len; i++) {
+                aggregated[i] += inst.sparkline[i] * weight;
+              }
             }
           }
+          sparklineData = aggregated;
         }
-        sparklineData = aggregated.map((v) => v / instruments.length).toList();
       }
+    } else {
+      sparklineData = const [100.0, 100.0, 100.0, 100.0, 100.0];
     }
 
     return Container(
@@ -648,7 +693,7 @@ class _PortfolioSummaryCard extends StatelessWidget {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  'Power: \$100k',
+                  formatCashBadge(virtualCash),
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w600,

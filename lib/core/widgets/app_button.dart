@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import '../constants/app_styles.dart';
 
-enum AppButtonVariant { primary, secondary, outline, danger, text }
+enum AppButtonVariant { primary, secondary, outline, danger, success, text }
 
 class AppButton extends StatelessWidget {
   final String text;
@@ -50,6 +50,10 @@ class AppButton extends StatelessWidget {
         break;
       case AppButtonVariant.danger:
         backgroundColor = isDark ? AppColors.bearRed : AppColors.bearRedLight;
+        foregroundColor = Colors.white;
+        break;
+      case AppButtonVariant.success:
+        backgroundColor = isDark ? AppColors.bullGreen : AppColors.bullGreenLight;
         foregroundColor = Colors.white;
         break;
       case AppButtonVariant.text:

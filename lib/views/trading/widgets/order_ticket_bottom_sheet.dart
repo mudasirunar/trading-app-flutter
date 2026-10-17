@@ -640,7 +640,7 @@ class _OrderTicketBottomSheetState extends State<OrderTicketBottomSheet> {
                         ? 'Insufficient Buying Power'
                         : 'Insufficient Shares'),
                 onPressed: canSubmit ? () => _submitOrder(context, state) : null,
-                variant: _side == OrderSide.buy ? AppButtonVariant.primary : AppButtonVariant.danger,
+                variant: _side == OrderSide.buy ? AppButtonVariant.success : AppButtonVariant.danger,
               ),
               const SizedBox(height: 8),
             ],

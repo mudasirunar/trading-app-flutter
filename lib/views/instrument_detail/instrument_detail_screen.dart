@@ -516,7 +516,7 @@ class _InstrumentDetailScreenState extends State<InstrumentDetailScreen> {
                       Expanded(
                         child: AppButton(
                           text: 'Buy',
-                          variant: AppButtonVariant.primary,
+                          variant: AppButtonVariant.success,
                           onPressed: () => _showOrderTicket(
                             isBuy: true,
                             instrument: instrument!,
