@@ -66,4 +66,22 @@ class AppHaptics {
       await HapticFeedback.lightImpact();
     } catch (_) {}
   }
+
+  /// Timed, resonant flutter haptic for price alert creation and trigger events.
+  /// Produces a distinctive, shaky bell vibration with a decaying micro-pulse sequence
+  /// (medium -> light -> light -> selection -> selection) that feels pleasingly mechanical
+  /// without being unpleasantly harsh or heavy.
+  static Future<void> alertChime() async {
+    try {
+      await HapticFeedback.mediumImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 45));
+      await HapticFeedback.lightImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      await HapticFeedback.lightImpact();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      await HapticFeedback.selectionClick();
+      await Future<void>.delayed(const Duration(milliseconds: 60));
+      await HapticFeedback.selectionClick();
+    } catch (_) {}
+  }
 }

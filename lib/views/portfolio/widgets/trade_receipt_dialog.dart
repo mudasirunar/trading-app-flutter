@@ -93,7 +93,7 @@ class TradeReceiptDialog extends StatelessWidget {
           children: [
             // Header Bar
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               decoration: BoxDecoration(
                 border: Border(bottom: BorderSide(color: borderColor)),
               ),
@@ -101,7 +101,7 @@ class TradeReceiptDialog extends StatelessWidget {
                 children: [
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 8, vertical: 4),
+                        horizontal: 7, vertical: 3),
                     decoration: BoxDecoration(
                       color: sideBg,
                       borderRadius: BorderRadius.circular(AppStyles.radius6),
@@ -115,15 +115,19 @@ class TradeReceiptDialog extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Text(
-                    'Trade Execution Receipt',
-                    style: AppStyles.titleMedium.copyWith(
-                      color: textPrimary,
-                      fontWeight: FontWeight.w600,
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Trade Receipt',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: AppStyles.titleMedium.copyWith(
+                        color: textPrimary,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   StatusBadge(status: badgeStatus),
                 ],
               ),
@@ -335,12 +339,18 @@ class TradeReceiptDialog extends StatelessWidget {
             fontSize: 13,
           ),
         ),
-        Text(
-          value,
-          style: AppStyles.bodyMedium.copyWith(
-            color: textPrimary,
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            value,
+            textAlign: TextAlign.end,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: AppStyles.bodyMedium.copyWith(
+              color: textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 13,
+            ),
           ),
         ),
       ],

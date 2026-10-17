@@ -22,7 +22,16 @@ import 'blocs/trading/trading_event.dart';
 import 'blocs/market/market_state.dart';
 import 'repositories/trading/i_trading_repository.dart';
 import 'repositories/trading/trading_repository.dart';
+import 'blocs/alerts/alerts_bloc.dart';
+import 'blocs/alerts/alerts_event.dart';
+import 'repositories/alerts/i_alerts_repository.dart';
+import 'repositories/alerts/alerts_repository.dart';
+import 'blocs/alerts/alerts_state.dart';
+import 'views/alerts/widgets/in_app_alert_banner.dart';
+import 'views/instrument_detail/instrument_detail_screen.dart';
 import 'views/navigation/main_navigation_hub.dart';
+
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,12 +42,14 @@ void main() async {
   final marketRepository = MarketRepository();
   final watchlistRepository = WatchlistRepository(storageService: storageService);
   final tradingRepository = TradingRepository(storage: storageService);
+  final alertsRepository = AlertsRepository(storage: storageService);
   runApp(
     TradingApp(
       authRepository: authRepository,
       marketRepository: marketRepository,
       watchlistRepository: watchlistRepository,
       tradingRepository: tradingRepository,
+      alertsRepository: alertsRepository,
     ),
   );
 }
@@ -48,6 +59,7 @@ class TradingApp extends StatelessWidget {
   final IMarketRepository marketRepository;
   final IWatchlistRepository watchlistRepository;
   final ITradingRepository tradingRepository;
+  final IAlertsRepository alertsRepository;
 
   TradingApp({
     super.key,
@@ -55,11 +67,14 @@ class TradingApp extends StatelessWidget {
     IMarketRepository? marketRepository,
     IWatchlistRepository? watchlistRepository,
     ITradingRepository? tradingRepository,
+    IAlertsRepository? alertsRepository,
   })  : marketRepository = marketRepository ?? MarketRepository(),
         watchlistRepository = watchlistRepository ??
             WatchlistRepository(storageService: LocalStorageService()),
         tradingRepository = tradingRepository ??
-            TradingRepository(storage: LocalStorageService());
+            TradingRepository(storage: LocalStorageService()),
+        alertsRepository = alertsRepository ??
+            AlertsRepository(storage: LocalStorageService());
 
   @override
   Widget build(BuildContext context) {
@@ -69,6 +84,7 @@ class TradingApp extends StatelessWidget {
         RepositoryProvider<IMarketRepository>.value(value: marketRepository),
         RepositoryProvider<IWatchlistRepository>.value(value: watchlistRepository),
         RepositoryProvider<ITradingRepository>.value(value: tradingRepository),
+        RepositoryProvider<IAlertsRepository>.value(value: alertsRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -100,15 +116,71 @@ class TradingApp extends StatelessWidget {
               return bloc;
             },
           ),
+          BlocProvider<AlertsBloc>(
+            create: (ctx) {
+              final bloc = AlertsBloc(repository: alertsRepository)
+                ..add(const AlertsInitialized());
+              ctx.read<MarketBloc>().stream.listen((mState) {
+                if (mState is MarketLoaded) {
+                  for (final inst in mState.instruments) {
+                    bloc.add(AlertPriceTickEvaluated(inst));
+                  }
+                }
+              });
+              return bloc;
+            },
+          ),
         ],
       child: BlocBuilder<ThemeCubit, ThemeMode>(
         builder: (context, themeMode) {
           return MaterialApp(
+            navigatorKey: appNavigatorKey,
             title: 'Trading App',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeMode,
+            builder: (context, child) {
+              return Stack(
+                children: [
+                  child ?? const SizedBox.shrink(),
+                  BlocBuilder<AlertsBloc, AlertsState>(
+                    builder: (context, alertsState) {
+                      if (alertsState is AlertsLoaded &&
+                          alertsState.recentlyTriggeredAlert != null) {
+                        final alert = alertsState.recentlyTriggeredAlert!;
+                        return Positioned(
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          child: InAppAlertBanner(
+                            alert: alert,
+                            onDismiss: () {
+                              context
+                                  .read<AlertsBloc>()
+                                  .add(AlertNotificationDismissed(alert.id));
+                            },
+                            onTap: () {
+                              context
+                                  .read<AlertsBloc>()
+                                  .add(AlertNotificationDismissed(alert.id));
+                              appNavigatorKey.currentState?.push(
+                                MaterialPageRoute(
+                                  builder: (_) => InstrumentDetailScreen(
+                                    symbol: alert.symbol,
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
+                ],
+              );
+            },
             home: BlocBuilder<AuthBloc, AuthState>(
               builder: (context, authState) {
                 if (authState is Authenticated) {

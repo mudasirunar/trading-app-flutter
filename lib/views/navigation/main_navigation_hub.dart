@@ -13,6 +13,9 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_dialog.dart';
 import '../../core/widgets/platform_bottom_bar.dart';
 import '../../core/widgets/status_badge.dart';
+import '../../blocs/alerts/alerts_bloc.dart';
+import '../../blocs/alerts/alerts_state.dart';
+import '../alerts/alerts_screen.dart';
 import '../dashboard/dashboard_screen.dart';
 import '../portfolio/portfolio_screen.dart';
 import '../watchlist/watchlist_screen.dart';
@@ -204,11 +207,12 @@ class _SettingsTab extends StatelessWidget {
             ),
             const SizedBox(height: 8),
 
-            Container(
-              decoration: BoxDecoration(
-                color: cardBg,
+            Material(
+              color: cardBg,
+              clipBehavior: Clip.antiAlias,
+              shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: borderColor),
+                side: BorderSide(color: borderColor),
               ),
               child: Column(
                 children: [
@@ -268,6 +272,71 @@ class _SettingsTab extends StatelessWidget {
                         ),
                       ),
                     ),
+                  ),
+                  Divider(height: 1, color: borderColor),
+                  BlocBuilder<AlertsBloc, AlertsState>(
+                    builder: (context, aState) {
+                      final activeCount =
+                          aState is AlertsLoaded ? aState.activeAlerts.length : 0;
+                      return ListTile(
+                        leading: const Icon(
+                          Icons.notifications_active_outlined,
+                          color: AppColors.primaryBlue,
+                        ),
+                        title: Text(
+                          'Price Alerts & Triggers',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textPrimary,
+                          ),
+                        ),
+                        subtitle: Text(
+                          activeCount > 0
+                              ? '$activeCount active price ${activeCount == 1 ? "alert" : "alerts"}'
+                              : 'Configure real-time threshold notifications',
+                          style: TextStyle(fontSize: 12, color: textSecondary),
+                        ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (activeCount > 0)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppColors.bullGreen.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  '$activeCount ACTIVE',
+                                  style: const TextStyle(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.bullGreen,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(width: 4),
+                            Icon(
+                              Icons.chevron_right_rounded,
+                              size: 20,
+                              color: textSecondary,
+                            ),
+                          ],
+                        ),
+                        onTap: () {
+                          AppHaptics.selection();
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (_) => const AlertsScreen(),
+                            ),
+                          );
+                        },
+                      );
+                    },
                   ),
                 ],
               ),

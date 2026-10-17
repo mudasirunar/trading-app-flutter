@@ -9,9 +9,12 @@ import '../../blocs/watchlist/watchlist_state.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_button.dart';
+import '../../blocs/alerts/alerts_bloc.dart';
+import '../../blocs/alerts/alerts_state.dart';
 import '../../models/candle_model.dart';
 import '../../models/instrument_model.dart';
 import '../../models/order_model.dart';
+import '../alerts/widgets/create_alert_sheet.dart';
 import '../trading/widgets/order_ticket_bottom_sheet.dart';
 import '../watchlist/widgets/add_to_watchlist_sheet.dart';
 import 'widgets/interactive_financial_chart.dart';
@@ -70,6 +73,58 @@ class _InstrumentDetailScreenState extends State<InstrumentDetailScreen> {
           style: const TextStyle(fontWeight: FontWeight.w800, letterSpacing: -0.3),
         ),
         actions: [
+          BlocBuilder<AlertsBloc, AlertsState>(
+            builder: (context, alertsState) {
+              final hasActive = alertsState is AlertsLoaded &&
+                  alertsState.hasActiveAlert(widget.symbol);
+
+              return IconButton(
+                icon: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      hasActive
+                          ? Icons.notifications_active_rounded
+                          : Icons.notifications_none_rounded,
+                      size: 24,
+                      color: hasActive ? AppColors.bullGreen : textSecondary,
+                    ),
+                    if (hasActive)
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: AppColors.bullGreen,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                tooltip: 'Set Price Alert',
+                onPressed: () {
+                  AppHaptics.light();
+                  final marketState = context.read<MarketBloc>().state;
+                  InstrumentModel? currentInst;
+                  if (marketState is MarketLoaded) {
+                    try {
+                      currentInst = marketState.instruments.firstWhere(
+                        (i) => i.symbol.toUpperCase() == widget.symbol.toUpperCase(),
+                      );
+                    } catch (_) {}
+                  }
+                  currentInst ??= widget.initialInstrument;
+                  if (currentInst != null) {
+                    CreateAlertSheet.show(context, currentInst);
+                  }
+                },
+              );
+            },
+          ),
           BlocBuilder<WatchlistBloc, WatchlistState>(
             builder: (context, watchlistState) {
               final isSaved = watchlistState is WatchlistsLoaded &&

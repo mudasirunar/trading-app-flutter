@@ -212,9 +212,14 @@ class _OrderTicketBottomSheetState extends State<OrderTicketBottomSheet> {
         final bool hasInsufficientShares = _side == OrderSide.sell && _quantity > availableShares;
         final bool canSubmit = !hasInsufficientFunds && !hasInsufficientShares && _quantity > 0;
 
-        return SingleChildScrollView(
-          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
-          child: Column(
+        return GestureDetector(
+          behavior: HitTestBehavior.translucent,
+          onTap: () => FocusScope.of(context).unfocus(),
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
@@ -645,8 +650,9 @@ class _OrderTicketBottomSheetState extends State<OrderTicketBottomSheet> {
               const SizedBox(height: 8),
             ],
           ),
-        );
-      },
-    );
+        ),
+      );
+    },
+  );
   }
 }

@@ -13,11 +13,11 @@ import '../../blocs/watchlist/watchlist_state.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/app_haptics.dart';
 import '../../core/widgets/app_dialog.dart';
-import '../../core/widgets/app_snack_bar.dart';
 import '../../core/widgets/sparkline_chart.dart';
 import '../../core/widgets/status_badge.dart';
 import '../../core/widgets/platform_segmented_movers_control.dart';
 import '../../models/instrument_model.dart';
+import '../alerts/alerts_screen.dart';
 import '../discovery/instrument_search_screen.dart';
 import '../instrument_detail/instrument_detail_screen.dart';
 
@@ -166,11 +166,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       icon: Icons.notifications_none_rounded,
                       label: 'Alerts',
                       onTap: () {
-                        AppHaptics.light();
-                        AppSnackBar.showInfo(
-                          context,
-                          'Price Alerts module will connect in Phase 9.',
-                          title: 'Price Alerts',
+                        AppHaptics.selection();
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (_) => const AlertsScreen(),
+                          ),
                         );
                       },
                     ),
